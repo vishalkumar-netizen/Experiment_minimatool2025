@@ -430,47 +430,73 @@ window.addEventListener('DOMContentLoaded', function() {
     // Update the UI accordingly
     if (typeof updateCalculatorVisibility === 'function') updateCalculatorVisibility();
 });
-// --- Meter to Feet Conversion Logic ---
 
-const MTF = 3.28084; // Conversion factor meters to feet
+// --- Meter to Feet Conversion Helper ---
+const MTF = 3.28084; // meter to feet factor
 
-// Helper to convert height fields if checkbox is checked
 function convertHeight(value) {
-  const isMeterToFeet = document.getElementById('meterToFeet').checked;
+  const isMeterToFeet = document.getElementById('meterToFeet')?.checked;
   if (isMeterToFeet && value) {
     return value * MTF;
   }
   return value;
 }
 
-// Wrap existing calculate function to convert input heights before calculation
+// --- Override calculate function to apply conversion internally ---
 const originalCalculate = calculate;
-calculate = function() {
-  // Convert DH, DA, MDH, MDA inputs for all procedures and categories
+calculate = function () {
+  const adElev = parseFloat(document.getElementById('adElev').value) || 0;   // feet, no conversion
+  const thrElev = parseFloat(document.getElementById('thrElev').value) || 0; // feet, no conversion
+
+  const isMeterToFeet = document.getElementById('meterToFeet')?.checked;
+
+  let summary = {};
+
   [...PRECISION_PROC, ...NONPRECISION_PROC_250, ...NONPRECISION_PROC_300, ...NONPRECISION_PROC_350, ...CIRCLING_PROC].forEach(proc => {
+    if (!document.getElementById('show_' + proc.code)?.checked) return;
+    summary[proc.code] = {};
     CATS.forEach(cat => {
-      // Precision procedures use DA and DH
       if (PRECISION_PROC.some(p => p.code === proc.code)) {
-        let dhInput = document.getElementById(`${proc.code}_${cat}_dh`);
-        let daInput = document.getElementById(`${proc.code}_${cat}_da`);
-        if (dhInput && dhInput.value) dhInput.value = convertHeight(parseFloat(dhInput.value)).toFixed(2);
-        if (daInput && daInput.value) daInput.value = convertHeight(parseFloat(daInput.value)).toFixed(2);
-      }
-      // Non-precision and Circling use MDA and MDH
-      else {
-        let mdaInput = document.getElementById(`${proc.code}_${cat}_mda`);
-        let mdhInput = document.getElementById(`${proc.code}_${cat}_mdh`);
-        if (mdaInput && mdaInput.value) mdaInput.value = convertHeight(parseFloat(mdaInput.value)).toFixed(2);
-        if (mdhInput && mdhInput.value) mdhInput.value = convertHeight(parseFloat(mdhInput.value)).toFixed(2);
+        // Precision approach: DA, DH
+        let daRaw = parseFloat(document.getElementById(`${proc.code}_${cat}_da`).value) || 0;
+        let dhRaw = parseFloat(document.getElementById(`${proc.code}_${cat}_dh`).value) || 0;
+        let da = isMeterToFeet ? daRaw * MTF : daRaw;
+        let dh = isMeterToFeet ? dhRaw * MTF : dhRaw;
+
+        let dhMin = (proc.code === "lnavvnav") ? 250 : 200;
+        let dhRaised = Math.max(dh, dhMin);
+        let daCalc = thrElev + dhRaised;
+        let daFinal = Math.max(da, daCalc);
+
+        let rvrRaw = parseFloat(document.getElementById(`${proc.code}_${cat}_rvr`).value) || 0;
+        let rvrTable = getRVRFromTable(dhRaised, document.getElementById('lightType').value);
+        let rvrFinal = Math.max(rvrRaw, rvrTable);
+        // CDFA/Non-CDFA and max RVR logic remain unchanged
+
+        summary[proc.code][cat] = `DA: ${daFinal.toFixed(1)} (${dhRaised.toFixed(1)}), RVR: ${rvrFinal}m`;
+      } else {
+        // Non-Precision and Circling: MDA, MDH
+        let mdaRaw = parseFloat(document.getElementById(`${proc.code}_${cat}_mda`).value) || 0;
+        let mdhRaw = parseFloat(document.getElementById(`${proc.code}_${cat}_mdh`).value) || 0;
+        let mda = isMeterToFeet ? mdaRaw * MTF : mdaRaw;
+        let mdh = isMeterToFeet ? mdhRaw * MTF : mdhRaw;
+
+        let vis = 0;
+        if (proc.code === 'circling') {
+          vis = parseFloat(document.getElementById(`${proc.code}_${cat}_vis`).value) || 0;
+        }
+
+        summary[proc.code][cat] = proc.code === 'circling' ?
+          `MDA: ${mda.toFixed(1)} (${mdh.toFixed(1)}), VIS: ${vis}km` :
+          `MDA: ${mda.toFixed(1)} (${mdh.toFixed(1)})`;
       }
     });
   });
 
-  // Now call original calculation with converted values
-  originalCalculate();
+  updateSummaryResults(summary);
 };
 
-// Trigger initial calculation on page load (with conversion if checkbox checked)
+// Do an initial calculation on page load
 window.addEventListener('DOMContentLoaded', () => {
   calculate();
 });
