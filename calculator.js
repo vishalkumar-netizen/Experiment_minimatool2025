@@ -432,35 +432,17 @@ window.addEventListener('DOMContentLoaded', function() {
 });
 
 // == Begin Meter to Feet AD Conversion Feature ==
-
-// Append checkbox UI near top inputs if not present
-window.addEventListener('DOMContentLoaded', function() {
-    if(!document.getElementById('meterToFeetAdLabel')) {
-        const container = document.querySelector('.top-inputs') || document.body;
-        const div = document.createElement('div');
-        div.className = 'input-group';
-        div.style.marginLeft = '20px';
-        div.innerHTML = `<label id="meterToFeetAdLabel"><input type="checkbox" id="meterToFeetAd"> Meter to Feet AD</label>`;
-        container.appendChild(div);
-
-        document.getElementById('meterToFeetAd').addEventListener('change', function() {
-            calculate(); // Recalculate on toggle
-        });
-    }
-});
-
-const meterToFeetFactor = 3.28084;
-
-// Override original calculate function calls for inputs and apply conversion if checked
 const _origCalculate = calculate;
 calculate = function() {
-    const adElev = parseFloat(document.getElementById('adElev').value) || 0; // AD Elev no conversion
-    const thrElev = parseFloat(document.getElementById('thrElev').value) || 0; // THR Elev no conversion
+    const adElev = parseFloat(document.getElementById('adElev').value) || 0; // No conversion
+    const thrElev = parseFloat(document.getElementById('thrElev').value) || 0; // No conversion
     const lightType = document.getElementById('lightType').value;
     const isProcCDFA = document.getElementById('cdfa').checked;
     const isNonCDFA = document.getElementById('noncdfa').checked;
     const isNonCDFA_AB = document.getElementById('noncdfa_ab').checked;
     const isNonCDFA_CD = document.getElementById('noncdfa_cd').checked;
+    const meterToFeetAdChecked = document.getElementById('meterToFeetAd')?.checked;
+    const meterToFeetFactor = 3.28084;
 
     function isNonCDFAForCat(cat) {
         if(!isNonCDFA) return false;
@@ -472,7 +454,6 @@ calculate = function() {
     }
 
     let summary = {};
-    const meterToFeetAdChecked = document.getElementById('meterToFeetAd')?.checked;
 
     // PRECISION PROC
     PRECISION_PROC.forEach(proc => {
@@ -485,9 +466,10 @@ calculate = function() {
             const da = meterToFeetAdChecked ? Math.ceil(da_raw * meterToFeetFactor) : da_raw;
             const dh = meterToFeetAdChecked ? Math.ceil(dh_raw * meterToFeetFactor) : dh_raw;
 
-            const dhRaised = proc.code === "lnavvnav" ? Math.max(dh, 250) : Math.max(dh, 200);
+            const dhRaised = (proc.code === "lnavvnav") ? Math.max(dh, 250) : Math.max(dh, 200);
             const daCalc = thrElev + dhRaised;
             const daFinal = Math.max(da, daCalc);
+
             const rvr = parseFloat(document.getElementById(`${proc.code}_${cat}_rvr`).value) || 0;
             const rvrTable = getRVRFromTable(dhRaised, lightType);
 
@@ -497,14 +479,14 @@ calculate = function() {
                 if(rvrFinal > maxRVR && (!rvr || rvr <= maxRVR)) rvrFinal = maxRVR;
             }
 
-            // Result string without meter input shown
-            const res = `DA: ${daFinal} ft (DH: ${dhRaised} ft), RVR: ${rvrFinal} m`;
+            // Format result: "DA (DH) RVRm"
+            const res = `${daFinal} (${dhRaised}) ${rvrFinal}m`;
             document.getElementById(`${proc.code}_${cat}_result`).innerText = (da_raw || dh_raw || rvr) ? res : '';
             summary[proc.code][cat] = (da_raw || dh_raw || rvr) ? res : '';
         });
     });
 
-    // NON-PRECISION PROC
+    // NON-PREC PROC
     [...NONPRECISION_PROC_250, ...NONPRECISION_PROC_300, ...NONPRECISION_PROC_350].forEach(proc => {
         if(!document.getElementById('show_'+proc.code).checked) return;
         summary[proc.code] = {};
@@ -531,7 +513,7 @@ calculate = function() {
             }
 
             if(mdhUsed > 1200) {
-                const res = `MDA: ${calcMDA} ft (${mdhUsed} ft min), RVR: 5000 m (forced Non-CDFA: MDH > 1200)`;
+                const res = `${calcMDA} (${mdhUsed}) 5000m`;
                 document.getElementById(`${proc.code}_${cat}_result`).innerText = res;
                 summary[proc.code][cat] = res;
                 return;
@@ -550,28 +532,35 @@ calculate = function() {
                 rvrFinal = Math.max(minRVR, rvrTable, rvr);
             }
 
-            const res = `MDA: ${calcMDA} ft (MDH: ${mdhUsed} ft), RVR: ${rvrFinal} m`;
+            // Format result: "MDA (MDH) RVRm"
+            const res = `${calcMDA} (${mdhUsed}) ${rvrFinal}m`;
             document.getElementById(`${proc.code}_${cat}_result`).innerText = (mda_raw || mdh_raw || rvr) ? res : '';
             summary[proc.code][cat] = (mda_raw || mdh_raw || rvr) ? res : '';
         });
     });
 
-    // CIRCLING PROC (no conversion)
+    // CIRCLING PROC
     if(document.getElementById('show_circling').checked) {
         summary.circling = {};
         const catMins = {A:400, B:500, C:600, D:700};
         const visDefaults = {A:1.5, B:1.6, C:2.4, D:3.6};
         CATS.forEach(cat => {
-            const mda = parseFloat(document.getElementById(`circling_${cat}_mda`).value) || 0;
-            const mdh = parseFloat(document.getElementById(`circling_${cat}_mdh`).value) || 0;
+            const mda_raw = parseFloat(document.getElementById(`circling_${cat}_mda`).value) || 0;
+            const mdh_raw = parseFloat(document.getElementById(`circling_${cat}_mdh`).value) || 0;
             const vis = parseFloat(document.getElementById(`circling_${cat}_vis`).value) || 0;
-            const mdhUsed = Math.max(mdh, catMins[cat]);
+
+            const mda = meterToFeetAdChecked ? Math.ceil(mda_raw * meterToFeetFactor) : mda_raw;
+            const mdh_user = meterToFeetAdChecked ? Math.ceil(mdh_raw * meterToFeetFactor) : mdh_raw;
+
+            const mdhUsed = Math.max(mdh_user, catMins[cat]);
             const mdaCalc = Math.ceil(adElev + mdhUsed);
             const mdaFinal = Math.max(mda, mdaCalc);
             const visFinal = Math.max(vis || 0, visDefaults[cat]);
-            const res = `MDA: ${mdaFinal} ft (${mdhUsed} ft), VIS: ${visFinal} km`;
-            document.getElementById(`circling_${cat}_result`).innerText = (mda || mdh || vis) ? res : '';
-            summary.circling[cat] = (mda || mdh || vis) ? res : '';
+
+            // Format result: "MDA (MDH) VISkm"
+            const res = `${mdaFinal} (${mdhUsed}) ${visFinal}km`;
+            document.getElementById(`circling_${cat}_result`).innerText = (mda_raw || mdh_raw || vis) ? res : '';
+            summary.circling[cat] = (mda_raw || mdh_raw || vis) ? res : '';
         });
     }
 
@@ -579,3 +568,5 @@ calculate = function() {
 };
 
 
+
+            
