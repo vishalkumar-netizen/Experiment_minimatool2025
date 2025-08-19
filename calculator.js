@@ -430,3 +430,48 @@ window.addEventListener('DOMContentLoaded', function() {
     // Update the UI accordingly
     if (typeof updateCalculatorVisibility === 'function') updateCalculatorVisibility();
 });
+// --- Meter to Feet Conversion Logic ---
+
+const MTF = 3.28084; // Conversion factor meters to feet
+
+// Helper to convert height fields if checkbox is checked
+function convertHeight(value) {
+  const isMeterToFeet = document.getElementById('meterToFeet').checked;
+  if (isMeterToFeet && value) {
+    return value * MTF;
+  }
+  return value;
+}
+
+// Wrap existing calculate function to convert input heights before calculation
+const originalCalculate = calculate;
+calculate = function() {
+  // Convert DH, DA, MDH, MDA inputs for all procedures and categories
+  [...PRECISION_PROC, ...NONPRECISION_PROC_250, ...NONPRECISION_PROC_300, ...NONPRECISION_PROC_350, ...CIRCLING_PROC].forEach(proc => {
+    CATS.forEach(cat => {
+      // Precision procedures use DA and DH
+      if (PRECISION_PROC.some(p => p.code === proc.code)) {
+        let dhInput = document.getElementById(`${proc.code}_${cat}_dh`);
+        let daInput = document.getElementById(`${proc.code}_${cat}_da`);
+        if (dhInput && dhInput.value) dhInput.value = convertHeight(parseFloat(dhInput.value)).toFixed(2);
+        if (daInput && daInput.value) daInput.value = convertHeight(parseFloat(daInput.value)).toFixed(2);
+      }
+      // Non-precision and Circling use MDA and MDH
+      else {
+        let mdaInput = document.getElementById(`${proc.code}_${cat}_mda`);
+        let mdhInput = document.getElementById(`${proc.code}_${cat}_mdh`);
+        if (mdaInput && mdaInput.value) mdaInput.value = convertHeight(parseFloat(mdaInput.value)).toFixed(2);
+        if (mdhInput && mdhInput.value) mdhInput.value = convertHeight(parseFloat(mdhInput.value)).toFixed(2);
+      }
+    });
+  });
+
+  // Now call original calculation with converted values
+  originalCalculate();
+};
+
+// Trigger initial calculation on page load (with conversion if checkbox checked)
+window.addEventListener('DOMContentLoaded', () => {
+  calculate();
+});
+
