@@ -117,30 +117,5 @@
   border: 2px solid #da3131;
 }
 </style>
-    <script>
-// Dynamically add "Meter to Feet?" checkbox inside .top-inputs on page load
-window.addEventListener('DOMContentLoaded', () => {
-  const topInputs = document.querySelector('.top-inputs');
-  if (!topInputs) return;
-
-  const wrapper = document.createElement('div');
-  wrapper.className = 'input-group';
-  wrapper.style.cssText = 'flex-direction: row; gap: 8px; align-items: center;';
-
-  const checkbox = document.createElement('input');
-  checkbox.type = 'checkbox';
-  checkbox.id = 'meterToFeet';
-
-  const label = document.createElement('label');
-  label.htmlFor = 'meterToFeet';
-  label.innerText = 'Meter to Feet?';
-
-  wrapper.appendChild(checkbox);
-  wrapper.appendChild(label);
-
-  // Insert as last item in .top-inputs
-  topInputs.appendChild(wrapper);
-});
-</script>
 </body>
 </html>
