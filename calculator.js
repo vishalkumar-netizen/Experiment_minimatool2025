@@ -431,5 +431,160 @@ window.addEventListener('DOMContentLoaded', function() {
     if (typeof updateCalculatorVisibility === 'function') updateCalculatorVisibility();
 });
 
-// --- Meter to Feet Conversion Helper ---
+// == Begin Meter to Feet AD Conversion Feature ==
+
+// Append checkbox UI near top inputs if not present
+window.addEventListener('DOMContentLoaded', function() {
+    if(!document.getElementById('meterToFeetAdLabel')) {
+        const container = document.querySelector('.top-inputs') || document.body;
+        const div = document.createElement('div');
+        div.className = 'input-group';
+        div.style.marginLeft = '20px';
+        div.innerHTML = `<label id="meterToFeetAdLabel"><input type="checkbox" id="meterToFeetAd"> Meter to Feet AD</label>`;
+        container.appendChild(div);
+
+        document.getElementById('meterToFeetAd').addEventListener('change', function() {
+            calculate(); // Recalculate on toggle
+        });
+    }
+});
+
+const meterToFeetFactor = 3.28084;
+function getInputValueConv(id) {
+    const el = document.getElementById(id);
+    if(!el) return 0;
+    const val = parseFloat(el.value) || 0;
+    const meterToFeetAd = document.getElementById('meterToFeetAd')?.checked;
+    // Convert only DA, DH, MDA, MDH inputs when checkbox is checked
+    if(meterToFeetAd && /(_da|_dh|_mda|_mdh)$/.test(id)) {
+        return Math.ceil(val * meterToFeetFactor);
+    }
+    return val;
+}
+
+// Override original calculate function calls for inputs
+const _origCalculate = calculate;
+calculate = function() {
+    const adElev = parseFloat(document.getElementById('adElev').value) || 0; // No change
+    const thrElev = parseFloat(document.getElementById('thrElev').value) || 0; // No change
+    const lightType = document.getElementById('lightType').value;
+    const isProcCDFA = document.getElementById('cdfa').checked;
+    const isNonCDFA = document.getElementById('noncdfa').checked;
+    const isNonCDFA_AB = document.getElementById('noncdfa_ab').checked;
+    const isNonCDFA_CD = document.getElementById('noncdfa_cd').checked;
+
+    function isNonCDFAForCat(cat) {
+        if(!isNonCDFA) return false;
+        if(!isNonCDFA_AB && !isNonCDFA_CD) return true;
+        if(isNonCDFA_AB && isNonCDFA_CD) return true;
+        if(isNonCDFA_AB && ['A','B'].includes(cat)) return true;
+        if(isNonCDFA_CD && ['C','D'].includes(cat)) return true;
+        return false;
+    }
+
+    let summary = {};
+
+    // PRECISION PROC
+    PRECISION_PROC.forEach(proc => {
+        if(!document.getElementById('show_'+proc.code).checked) return;
+        summary[proc.code] = {};
+        CATS.forEach(cat => {
+            const da_raw = parseFloat(document.getElementById(`${proc.code}_${cat}_da`).value) || 0;
+            const dh_raw = parseFloat(document.getElementById(`${proc.code}_${cat}_dh`).value) || 0;
+
+            const da = document.getElementById('meterToFeetAd')?.checked ? Math.ceil(da_raw * meterToFeetFactor) : da_raw;
+            const dh = document.getElementById('meterToFeetAd')?.checked ? Math.ceil(dh_raw * meterToFeetFactor) : dh_raw;
+
+            const dhRaised = proc.code === "lnavvnav" ? Math.max(dh, 250) : Math.max(dh, 200);
+            const daCalc = thrElev + dhRaised;
+            const daFinal = Math.max(da, daCalc);
+            const rvr = parseFloat(document.getElementById(`${proc.code}_${cat}_rvr`).value) || 0;
+            const rvrTable = getRVRFromTable(dhRaised, lightType);
+
+            let rvrFinal = Math.max(rvrTable, rvr);
+            if(!isNonCDFAForCat(cat)) {
+                const maxRVR = ['A','B'].includes(cat) ? 1500 : 2400;
+                if(rvrFinal > maxRVR && (!rvr || rvr <= maxRVR)) rvrFinal = maxRVR;
+            }
+
+            // Display results with input meters & converted feet in parentheses
+            const res = `DA: ${daFinal} ft (Input: ${da_raw} m), DH: ${dhRaised} ft (Input: ${dh_raw} m), RVR: ${rvrFinal} m`;
+            document.getElementById(`${proc.code}_${cat}_result`).innerText = (da_raw || dh_raw || rvr) ? res : '';
+            summary[proc.code][cat] = (da_raw || dh_raw || rvr) ? res : '';
+        });
+    });
+
+    // NON-PREC PROC
+    [...NONPRECISION_PROC_250, ...NONPRECISION_PROC_300, ...NONPRECISION_PROC_350].forEach(proc => {
+        if(!document.getElementById('show_'+proc.code).checked) return;
+        summary[proc.code] = {};
+        let minMDH = 250;
+        if(NONPRECISION_PROC_300.some(p => p.code === proc.code)) minMDH = 300;
+        if(NONPRECISION_PROC_350.some(p => p.code === proc.code)) minMDH = 350;
+
+        CATS.forEach(cat => {
+            const mda_raw = parseFloat(document.getElementById(`${proc.code}_${cat}_mda`).value) || 0;
+            const mdh_raw = parseFloat(document.getElementById(`${proc.code}_${cat}_mdh`).value) || 0;
+
+            const mda = document.getElementById('meterToFeetAd')?.checked ? Math.ceil(mda_raw * meterToFeetFactor) : mda_raw;
+            let mdh = document.getElementById('meterToFeetAd')?.checked ? Math.ceil(mdh_raw * meterToFeetFactor) : mdh_raw;
+            let mdhUsed = mdh;
+
+            if(mdh > 0 && mdh < minMDH) {
+                mdhUsed = minMDH;
+            }
+
+            let calcMDA = mda;
+            if(mdh > 0 && mdh < minMDH) {
+                calcMDA = Math.ceil(thrElev + mdhUsed);
+                if(mda > calcMDA) calcMDA = mda;
+            }
+
+            if(mdhUsed > 1200) {
+                const res = `MDA: ${calcMDA} ft (${mdhUsed} ft min), RVR: 5000 m (forced Non-CDFA: MDH > 1200)`;
+                document.getElementById(`${proc.code}_${cat}_result`).innerText = res;
+                summary[proc.code][cat] = res;
+                return;
+            }
+
+            const rvr = parseFloat(document.getElementById(`${proc.code}_${cat}_rvr`).value) || 0;
+            const rvrTable = getRVRFromTable(mdhUsed || minMDH, lightType);
+
+            let rvrFinal;
+            if(!isNonCDFAForCat(cat)) {
+                rvrFinal = Math.max(750, rvrTable, rvr);
+                const maxRVR = ['A','B'].includes(cat) ? 1500 : 2400;
+                if(rvrFinal > maxRVR && (!rvr || rvr <= maxRVR)) rvrFinal = maxRVR;
+            } else {
+                let minRVR = ['A','B'].includes(cat) ? 1000 : 1200;
+                rvrFinal = Math.max(minRVR, rvrTable, rvr);
+            }
+
+            const res = `MDA: ${calcMDA} ft (Input: ${mda_raw} m), MDH: ${mdhUsed} ft (Input: ${mdh_raw} m), RVR: ${rvrFinal} m`;
+            document.getElementById(`${proc.code}_${cat}_result`).innerText = (mda_raw || mdh_raw || rvr) ? res : '';
+            summary[proc.code][cat] = (mda_raw || mdh_raw || rvr) ? res : '';
+        });
+    });
+
+    // CIRCLING PROC (no conversion)
+    if(document.getElementById('show_circling').checked) {
+        summary.circling = {};
+        const catMins = {A:400, B:500, C:600, D:700};
+        const visDefaults = {A:1.5, B:1.6, C:2.4, D:3.6};
+        CATS.forEach(cat => {
+            const mda = parseFloat(document.getElementById(`circling_${cat}_mda`).value) || 0;
+            const mdh = parseFloat(document.getElementById(`circling_${cat}_mdh`).value) || 0;
+            const vis = parseFloat(document.getElementById(`circling_${cat}_vis`).value) || 0;
+            const mdhUsed = Math.max(mdh, catMins[cat]);
+            const mdaCalc = Math.ceil(adElev + mdhUsed);
+            const mdaFinal = Math.max(mda, mdaCalc);
+            const visFinal = Math.max(vis || 0, visDefaults[cat]);
+            const res = `MDA: ${mdaFinal} ft (${mdhUsed} ft), VIS: ${visFinal} km`;
+            document.getElementById(`circling_${cat}_result`).innerText = (mda || mdh || vis) ? res : '';
+            summary.circling[cat] = (mda || mdh || vis) ? res : '';
+        });
+    }
+
+    updateSummaryResults(summary);
+};
 
