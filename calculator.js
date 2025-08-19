@@ -450,23 +450,12 @@ window.addEventListener('DOMContentLoaded', function() {
 });
 
 const meterToFeetFactor = 3.28084;
-function getInputValueConv(id) {
-    const el = document.getElementById(id);
-    if(!el) return 0;
-    const val = parseFloat(el.value) || 0;
-    const meterToFeetAd = document.getElementById('meterToFeetAd')?.checked;
-    // Convert only DA, DH, MDA, MDH inputs when checkbox is checked
-    if(meterToFeetAd && /(_da|_dh|_mda|_mdh)$/.test(id)) {
-        return Math.ceil(val * meterToFeetFactor);
-    }
-    return val;
-}
 
-// Override original calculate function calls for inputs
+// Override original calculate function calls for inputs and apply conversion if checked
 const _origCalculate = calculate;
 calculate = function() {
-    const adElev = parseFloat(document.getElementById('adElev').value) || 0; // No change
-    const thrElev = parseFloat(document.getElementById('thrElev').value) || 0; // No change
+    const adElev = parseFloat(document.getElementById('adElev').value) || 0; // AD Elev no conversion
+    const thrElev = parseFloat(document.getElementById('thrElev').value) || 0; // THR Elev no conversion
     const lightType = document.getElementById('lightType').value;
     const isProcCDFA = document.getElementById('cdfa').checked;
     const isNonCDFA = document.getElementById('noncdfa').checked;
@@ -483,6 +472,7 @@ calculate = function() {
     }
 
     let summary = {};
+    const meterToFeetAdChecked = document.getElementById('meterToFeetAd')?.checked;
 
     // PRECISION PROC
     PRECISION_PROC.forEach(proc => {
@@ -492,8 +482,8 @@ calculate = function() {
             const da_raw = parseFloat(document.getElementById(`${proc.code}_${cat}_da`).value) || 0;
             const dh_raw = parseFloat(document.getElementById(`${proc.code}_${cat}_dh`).value) || 0;
 
-            const da = document.getElementById('meterToFeetAd')?.checked ? Math.ceil(da_raw * meterToFeetFactor) : da_raw;
-            const dh = document.getElementById('meterToFeetAd')?.checked ? Math.ceil(dh_raw * meterToFeetFactor) : dh_raw;
+            const da = meterToFeetAdChecked ? Math.ceil(da_raw * meterToFeetFactor) : da_raw;
+            const dh = meterToFeetAdChecked ? Math.ceil(dh_raw * meterToFeetFactor) : dh_raw;
 
             const dhRaised = proc.code === "lnavvnav" ? Math.max(dh, 250) : Math.max(dh, 200);
             const daCalc = thrElev + dhRaised;
@@ -507,14 +497,14 @@ calculate = function() {
                 if(rvrFinal > maxRVR && (!rvr || rvr <= maxRVR)) rvrFinal = maxRVR;
             }
 
-            // Display results with input meters & converted feet in parentheses
-            const res = `DA: ${daFinal} ft (Input: ${da_raw} m), DH: ${dhRaised} ft (Input: ${dh_raw} m), RVR: ${rvrFinal} m`;
+            // Result string without meter input shown
+            const res = `DA: ${daFinal} ft (DH: ${dhRaised} ft), RVR: ${rvrFinal} m`;
             document.getElementById(`${proc.code}_${cat}_result`).innerText = (da_raw || dh_raw || rvr) ? res : '';
             summary[proc.code][cat] = (da_raw || dh_raw || rvr) ? res : '';
         });
     });
 
-    // NON-PREC PROC
+    // NON-PRECISION PROC
     [...NONPRECISION_PROC_250, ...NONPRECISION_PROC_300, ...NONPRECISION_PROC_350].forEach(proc => {
         if(!document.getElementById('show_'+proc.code).checked) return;
         summary[proc.code] = {};
@@ -526,8 +516,8 @@ calculate = function() {
             const mda_raw = parseFloat(document.getElementById(`${proc.code}_${cat}_mda`).value) || 0;
             const mdh_raw = parseFloat(document.getElementById(`${proc.code}_${cat}_mdh`).value) || 0;
 
-            const mda = document.getElementById('meterToFeetAd')?.checked ? Math.ceil(mda_raw * meterToFeetFactor) : mda_raw;
-            let mdh = document.getElementById('meterToFeetAd')?.checked ? Math.ceil(mdh_raw * meterToFeetFactor) : mdh_raw;
+            const mda = meterToFeetAdChecked ? Math.ceil(mda_raw * meterToFeetFactor) : mda_raw;
+            let mdh = meterToFeetAdChecked ? Math.ceil(mdh_raw * meterToFeetFactor) : mdh_raw;
             let mdhUsed = mdh;
 
             if(mdh > 0 && mdh < minMDH) {
@@ -560,7 +550,7 @@ calculate = function() {
                 rvrFinal = Math.max(minRVR, rvrTable, rvr);
             }
 
-            const res = `MDA: ${calcMDA} ft (Input: ${mda_raw} m), MDH: ${mdhUsed} ft (Input: ${mdh_raw} m), RVR: ${rvrFinal} m`;
+            const res = `MDA: ${calcMDA} ft (MDH: ${mdhUsed} ft), RVR: ${rvrFinal} m`;
             document.getElementById(`${proc.code}_${cat}_result`).innerText = (mda_raw || mdh_raw || rvr) ? res : '';
             summary[proc.code][cat] = (mda_raw || mdh_raw || rvr) ? res : '';
         });
@@ -587,4 +577,5 @@ calculate = function() {
 
     updateSummaryResults(summary);
 };
+
 
