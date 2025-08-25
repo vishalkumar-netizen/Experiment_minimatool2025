@@ -2,94 +2,47 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Aviation Calculator Tool</title>
-  <link rel="stylesheet" href="style.css">
-  <style>
-    body { font-family: Arial, sans-serif; margin: 20px; background: #fafafa; }
-    h2 { text-align: center; }
-    .top-inputs { display: flex; gap: 20px; justify-content: center; margin-bottom: 20px; }
-    .top-inputs label { font-weight: bold; }
-    .procedure-section { display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; margin-bottom: 20px; }
-    .procedure-box { border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: #fff; width: 280px; }
-    .procedure-box h3 { margin-top: 0; font-size: 18px; }
-    .cat-row { display: flex; gap: 10px; margin-bottom: 10px; }
-    .cat-row input { width: 60px; padding: 4px; }
-    .buttons { text-align: center; margin: 20px; }
-    button { padding: 10px 20px; margin: 0 10px; border: none; border-radius: 6px; cursor: pointer; }
-    button.calculate { background: #007bff; color: #fff; }
-    button.clear { background: #dc3545; color: #fff; }
-    .summary { margin-top: 30px; border-top: 2px solid #ccc; padding-top: 20px; }
-    .summary h3 { text-align: center; }
-    .result-card { background: #fff; border: 1px solid #ddd; border-radius: 8px; margin: 10px auto; padding: 10px 15px; width: 400px; }
-    .result-card h4 { margin: 0 0 10px; }
-    .result-line { font-size: 14px; margin: 2px 0; }
-  </style>
+  <title>Approach Minima Calculator</title>
+  <script src="calculator.js" defer></script>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
+<body class="bg-gray-100 p-6 font-sans">
+  <div class="max-w-6xl mx-auto bg-white shadow-2xl rounded-2xl p-6 space-y-6">
+    <h1 class="text-2xl font-bold text-center text-blue-700">Approach Minima Calculator</h1>
 
-  <h2>Aviation Calculator Tool</h2>
-
-  <!-- Top Inputs -->
-  <div class="top-inputs">
-    <div>
-      <label>AD Elev (m)</label><br>
-      <input type="number" id="adElev" value="0">
+    <!-- Options -->
+    <div class="flex items-center space-x-4">
+      <label class="flex items-center space-x-2">
+        <input type="checkbox" id="meterToFeet" class="form-checkbox">
+        <span class="font-semibold">Meter to Feet Conversion (AD)</span>
+      </label>
+      <div class="flex space-x-4">
+        <div id="standardBox" class="px-4 py-2 rounded-lg bg-green-200 font-bold">STANDARD</div>
+        <div id="stateBox" class="px-4 py-2 rounded-lg bg-red-200 font-bold hidden">STATE</div>
+      </div>
     </div>
-    <div>
-      <label>THR Elev (m)</label><br>
-      <input type="number" id="thrElev" value="0">
+
+    <!-- Elevations -->
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="block font-semibold">AD Elevation (ft)</label>
+        <input id="adElevation" type="number" class="w-full border rounded-lg p-2">
+      </div>
+      <div>
+        <label class="block font-semibold">THR Elevation (ft)</label>
+        <input id="thrElevation" type="number" class="w-full border rounded-lg p-2">
+      </div>
     </div>
-    <div>
-      <label>Light</label><br>
-      <select id="lightType">
-        <option value="FALS">FALS</option>
-        <option value="IALS">IALS</option>
-        <option value="BALS">BALS</option>
-        <option value="NALS">NALS</option>
-      </select>
-    </div>
-    <div>
-      <label>Procedure</label><br>
-      <input type="radio" name="cdfa" value="CDFA" checked> CDFA
-      <input type="radio" name="cdfa" value="NON CDFA"> NON CDFA
-    </div>
+
+    <!-- Procedures Input -->
+    <div id="procedures" class="space-y-4"></div>
+
+    <button onclick="calculate()" class="bg-blue-600 text-white px-6 py-2 rounded-xl shadow-lg hover:bg-blue-700">
+      Calculate
+    </button>
+
+    <!-- Results -->
+    <div id="results" class="mt-6 space-y-4"></div>
   </div>
-
-  <!-- Procedure Selection -->
-  <div style="text-align:center; margin-bottom:10px;">
-    <label><input type="checkbox" class="proc" value="CAT1"> CAT 1</label>
-    <label><input type="checkbox" class="proc" value="RNP"> RNP</label>
-    <label><input type="checkbox" class="proc" value="GLS"> GLS</label>
-    <label><input type="checkbox" class="proc" value="PAR"> PAR</label>
-    <label><input type="checkbox" class="proc" value="LPV"> LPV</label>
-    <label><input type="checkbox" class="proc" value="LNAVVNAV"> LNAV/VNAV</label>
-    <label><input type="checkbox" class="proc" value="LOC"> LOC</label>
-    <label><input type="checkbox" class="proc" value="LOCDME"> LOC+DME</label>
-    <label><input type="checkbox" class="proc" value="VORDME"> VOR+DME</label>
-    <label><input type="checkbox" class="proc" value="LNAV"> LNAV</label>
-    <label><input type="checkbox" class="proc" value="SRA"> SRA</label>
-    <label><input type="checkbox" class="proc" value="LDA"> LDA</label>
-    <label><input type="checkbox" class="proc" value="VOR"> VOR</label>
-    <label><input type="checkbox" class="proc" value="NDBDME"> NDB+DME</label>
-    <label><input type="checkbox" class="proc" value="NDB"> NDB</label>
-    <label><input type="checkbox" class="proc" value="Circling"> Circling</label>
-  </div>
-
-  <!-- Procedure Input Boxes -->
-  <div id="procedureInputs" class="procedure-section"></div>
-
-  <!-- Buttons -->
-  <div class="buttons">
-    <button class="calculate" onclick="calculateAll()">Calculate All</button>
-    <button class="clear" onclick="clearAll()">Clear All</button>
-  </div>
-
-  <!-- Summary -->
-  <div class="summary">
-    <h3>Summary of Results</h3>
-    <div id="results"></div>
-  </div>
-
-  <script src="calculator.js"></script>
 </body>
 </html>
