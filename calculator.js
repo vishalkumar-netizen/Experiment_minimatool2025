@@ -1,4 +1,7 @@
-// =======================
+// Conversion factor
+const M_TO_FT = 3.28084;
+
+// RVR TABLE
 // Fill in all RVR ranges from your full table here!
 const RVR_TABLE_RANGES = [
     {low: 200, high: 210, FALS: 550, IALS: 750, BALS: 1000, NALS: 1200},
@@ -42,171 +45,115 @@ const RVR_TABLE_RANGES = [
     {low: 1201, high: 9999, FALS: 5000, IALS: 5000, BALS: 5000, NALS: 5000}
 ];
 
-// =======================
-// Procedure Types
-// =======================
-const PRECISION = ["CAT1", "RNP", "GLS", "PAR", "LPV", "LNAVVNAV"];
-const NON_PRECISION = ["LOC","LOCDME","VORDME","LNAV","SRA","LDA","VOR","NDBDME","NDB"];
+// Circling defaults
+const CIRCLING = {
+  A: {MDH:400, VIS:1.5},
+  B: {MDH:500, VIS:1.6},
+  C: {MDH:600, VIS:2.4},
+  D: {MDH:700, VIS:3.6}
+};
 
-// =======================
-// Dynamic Input Fields
-// =======================
-document.querySelectorAll(".proc").forEach(cb=>{
-  cb.addEventListener("change", ()=>{
-    renderProcedureInputs();
-  });
-});
+// On page load, add example procedures
+window.onload = () => {
+  addProcedure("CAT I (Precision)");
+  addProcedure("LOC (Non-Precision)");
+  addProcedure("Circling");
+};
 
-function renderProcedureInputs(){
-  const container = document.getElementById("procedureInputs");
-  container.innerHTML = "";
-  document.querySelectorAll(".proc:checked").forEach(cb=>{
-    const proc = cb.value;
-    const box = document.createElement("div");
-    box.className="procedure-box";
-    box.innerHTML = `<h3>${proc}</h3>`+["A","B","C","D"].map(cat=>{
-      let fields="";
-      if(proc==="Circling"){
-        fields = `<input placeholder="MDA" id="${proc}_${cat}_MDA">
-                  <input placeholder="MDH" id="${proc}_${cat}_MDH">
-                  <input placeholder="VIS" id="${proc}_${cat}_VIS">`;
-      } else if(PRECISION.includes(proc)){
-        fields = `<input placeholder="DA" id="${proc}_${cat}_DA">
-                  <input placeholder="DH" id="${proc}_${cat}_DH">
-                  <input placeholder="RVR" id="${proc}_${cat}_RVR">`;
-      } else {
-        fields = `<input placeholder="MDA" id="${proc}_${cat}_MDA">
-                  <input placeholder="MDH" id="${proc}_${cat}_MDH">
-                  <input placeholder="RVR" id="${proc}_${cat}_RVR">`;
-      }
-      return `<div class="cat-row"><label>CAT ${cat}</label>${fields}</div>`;
-    }).join("");
-    container.appendChild(box);
-  });
+function addProcedure(name) {
+  const container = document.getElementById("procedures");
+  const div = document.createElement("div");
+  div.className = "border p-4 rounded-lg shadow";
+  div.innerHTML = `
+    <h2 class="font-bold mb-2">${name}</h2>
+    <div class="grid grid-cols-5 gap-2">
+      ${["A","B","C","D"].map(cat => `
+        <div>
+          <label class="block text-sm font-semibold">CAT ${cat}</label>
+          <input type="number" placeholder="DA/DH/MDA/MDH (m)" class="w-full border p-1" data-proc="${name}" data-cat="${cat}" data-type="dh">
+          <input type="number" placeholder="RVR/VIS (m)" class="w-full border p-1 mt-1" data-proc="${name}" data-cat="${cat}" data-type="rvr">
+        </div>
+      `).join("")}
+    </div>
+  `;
+  container.appendChild(div);
 }
 
-// =======================
-// Clear All
-// =======================
-function clearAll(){
-  document.getElementById("results").innerHTML="";
-  document.getElementById("procedureInputs").innerHTML="";
-  document.querySelectorAll(".proc").forEach(c=>c.checked=false);
-}
-
-// =======================
-// Calculation Engine
-// =======================
-function calculateAll(){
-  const adElev = parseInt(document.getElementById("adElev").value)||0;
-  const thrElev = parseInt(document.getElementById("thrElev").value)||0;
-  const light = document.getElementById("lightType").value;
-  const cdfaMode = document.querySelector("input[name=cdfa]:checked").value;
-
-  const resultsDiv = document.getElementById("results");
-  resultsDiv.innerHTML="";
-
-  let circlingData=null;
-  let results=[];
-
-  document.querySelectorAll(".proc:checked").forEach(cb=>{
-    const proc=cb.value;
-    let procResult={proc:proc,cats:{}};
-
-    ["A","B","C","D"].forEach(cat=>{
-      if(proc==="Circling"){
-        let mdh=parseInt(document.getElementById(`${proc}_${cat}_MDH`)?.value)||({A:400,B:500,C:600,D:700}[cat]);
-        let mda=parseInt(document.getElementById(`${proc}_${cat}_MDA`)?.value)||mdh+adElev;
-        let vis=parseFloat(document.getElementById(`${proc}_${cat}_VIS`)?.value)||({A:1.5,B:1.6,C:2.4,D:3.6}[cat]);
-        procResult.cats[cat]={MDH:mdh,MDA:Math.ceil((mdh+adElev)/10)*10,VIS:vis};
-      }
-      else if(PRECISION.includes(proc)){
-        let dh=parseInt(document.getElementById(`${proc}_${cat}_DH`)?.value)||0;
-        if(proc==="LNAVVNAV") dh=Math.max(dh,250); else dh=Math.max(dh,200);
-        let da=parseInt(document.getElementById(`${proc}_${cat}_DA`)?.value)||0;
-        let rvrInput=parseInt(document.getElementById(`${proc}_${cat}_RVR`)?.value)||0;
-        let rvrFromTable=lookupRVR(dh,light);
-        let rvr=Math.max(rvrFromTable,rvrInput);
-        if(cdfaMode==="CDFA"){
-          if(cat==="A"||cat==="B") rvr=Math.min(rvr,1500);
-          if(cat==="C"||cat==="D") rvr=Math.min(rvr,2400);
-        }
-        procResult.cats[cat]={DA:da,DH:dh,RVR:rvr};
-      }
-      else if(NON_PRECISION.includes(proc)){
-        let mdh=parseInt(document.getElementById(`${proc}_${cat}_MDH`)?.value)||0;
-        let mda=parseInt(document.getElementById(`${proc}_${cat}_MDA`)?.value)||0;
-        let rvrInput=parseInt(document.getElementById(`${proc}_${cat}_RVR`)?.value)||0;
-        if(mdh>1200){
-          procResult.cats[cat]={MDA:mda,MDH:mdh,RVR:5000,forced:true};
-        } else {
-          let minRvr= (cdfaMode==="CDFA")?750:((cat==="A"||cat==="B")?1000:1200);
-          let rvrFromTable=lookupRVR(mdh,light);
-          let rvr=Math.max(minRvr,rvrFromTable,rvrInput);
-          if(cdfaMode==="CDFA"){
-            if(cat==="A"||cat==="B") rvr=Math.min(rvr,1500);
-            if(cat==="C"||cat==="D") rvr=Math.min(rvr,2400);
-          }
-          procResult.cats[cat]={MDA:Math.ceil((mdh+adElev)/10)*10,MDH:mdh,RVR:rvr};
-        }
-      }
-    });
-    results.push(procResult);
-    if(proc==="Circling") circlingData=procResult;
-  });
-
-  // Circling Raise Logic
-  if(circlingData){
-    results.forEach(pr=>{
-      if(pr.proc!=="Circling"){
-        ["A","B","C","D"].forEach(cat=>{
-          const cir=circlingData.cats[cat];
-          const p=pr.cats[cat];
-          if(!p||!cir) return;
-          let trigger=false;
-          let newMdh=cir.MDH;
-          let newVis=cir.VIS;
-          if(p.DH && p.DH>cir.MDH){ newMdh=p.DH; trigger=true; }
-          if(p.MDH && p.MDH>cir.MDH){ newMdh=p.MDH; trigger=true; }
-          if(p.RVR && (p.RVR/1000)>cir.VIS){ newVis=p.RVR/1000; trigger=true; }
-          if(trigger){
-            results.push({proc:`Circling raise for ${pr.proc} (CAT ${cat})`,cats:{[cat]:{
-              MDH:newMdh,
-              MDA:Math.ceil((newMdh+adElev)/10)*10,
-              VIS:newVis
-            }}});
-          }
-        });
-      }
-    });
+function getRVRFromTable(dh, light) {
+  for (const row of RVR_TABLE_RANGES) {
+    if (dh >= row.low && dh <= row.high) return row[light] || 1200;
   }
-
-  // Render Results
-  results.forEach(r=>{
-    const card=document.createElement("div");
-    card.className="result-card";
-    card.innerHTML=`<h4>${r.proc}</h4>`+["A","B","C","D"].map(cat=>{
-      const d=r.cats[cat]; if(!d) return "";
-      let line="";
-      if(r.proc==="Circling"||r.proc.includes("Circling raise")){
-        line=`CAT ${cat}: MDH ${d.MDH}, MDA ${d.MDA}, VIS ${d.VIS}km`;
-      } else if(PRECISION.includes(r.proc)){
-        line=`CAT ${cat}: DA ${d.DA}, DH ${d.DH}, RVR ${d.RVR}m`;
-      } else {
-        line=`CAT ${cat}: MDA ${d.MDA}, MDH ${d.MDH}, RVR ${d.RVR}m ${d.forced?"(Forced Non-CDFA)":""}`;
-      }
-      return `<div class="result-line">${line}</div>`;
-    }).join("");
-    resultsDiv.appendChild(card);
-  });
+  return 5000;
 }
 
-// =======================
-// RVR Lookup
-// =======================
-function lookupRVR(dh,light){
-  for(let r of RVR_TABLE_RANGES){
-    if(dh>=r.low && dh<=r.high) return r[light];
-  }
-  return 9999;
+function calculate() {
+  const adElevation = parseInt(document.getElementById("adElevation").value) || 0;
+  const thrElevation = parseInt(document.getElementById("thrElevation").value) || 0;
+  const meterToFeet = document.getElementById("meterToFeet").checked;
+
+  let results = [];
+  let stateTriggered = false;
+
+  document.querySelectorAll("#procedures > div").forEach(procDiv => {
+    const procName = procDiv.querySelector("h2").textContent;
+    ["A","B","C","D"].forEach(cat => {
+      const dhInput = procDiv.querySelector(`input[data-cat="${cat}"][data-type="dh"]`).value;
+      const rvrInput = procDiv.querySelector(`input[data-cat="${cat}"][data-type="rvr"]`).value;
+
+      let dh = parseInt(dhInput) || null;
+      let rvr = parseInt(rvrInput) || null;
+
+      // Convert meters → feet if selected
+      if (meterToFeet && dh !== null) dh = Math.round(dh * M_TO_FT);
+
+      let minDh, minRvr;
+      if (procName.includes("CAT I")) {
+        minDh = Math.max(200, dh || 0);
+        minRvr = getRVRFromTable(minDh, "FALS");
+      } else if (procName.includes("LOC")) {
+        minDh = Math.max(250, dh || 0);
+        minRvr = Math.max(750, getRVRFromTable(minDh, "FALS"));
+      } else if (procName.includes("Circling")) {
+        minDh = CIRCLING[cat].MDH;
+        minRvr = CIRCLING[cat].VIS * 1000; // in meters
+      } else {
+        minDh = dh || 0;
+        minRvr = 1000;
+      }
+
+      // MDA = MDH + AD Elev
+      const mda = Math.ceil((minDh + adElevation)/10)*10;
+
+      // Decide STANDARD/STATE
+      let highlight = "standard";
+      if (rvr !== null && rvr > minRvr) {
+        highlight = "state";
+        stateTriggered = true;
+      }
+
+      results.push({
+        procedure: procName,
+        cat, mda, mdh:minDh, rvr: rvr || minRvr,
+        highlight
+      });
+    });
+  });
+
+  // Update UI highlight boxes
+  document.getElementById("standardBox").classList.toggle("hidden", stateTriggered);
+  document.getElementById("stateBox").classList.toggle("hidden", !stateTriggered);
+
+  // Display results
+  const resDiv = document.getElementById("results");
+  resDiv.innerHTML = "";
+  results.forEach(r => {
+    const row = document.createElement("div");
+    row.className = "grid grid-cols-3 gap-4 border-b py-1";
+    row.innerHTML = `
+      <div class="font-bold">${r.procedure} CAT ${r.cat}</div>
+      <div>MDA: ${r.mda}, MDH: ${r.mdh}</div>
+      <div class="${r.highlight==="state"?"text-red-600 font-bold":""}">RVR/VIS: ${r.rvr}</div>
+    `;
+    resDiv.appendChild(row);
+  });
 }
