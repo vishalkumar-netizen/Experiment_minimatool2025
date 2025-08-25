@@ -2,122 +2,93 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Aviation Minima Calculator</title>
+  <title>Aviation Calculator Tool</title>
+  <link rel="stylesheet" href="style.css">
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 20px;
-      background: #f8f9fa;
-    }
-    h1 {
-      text-align: center;
-    }
-    .section {
-      background: #fff;
-      border-radius: 10px;
-      padding: 20px;
-      margin-bottom: 20px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-    }
-    label {
-      display: block;
-      margin: 6px 0;
-    }
-    input, select {
-      padding: 5px;
-      margin-top: 2px;
-      width: 200px;
-    }
-    .checkbox-group {
-      margin: 8px 0;
-    }
-    button {
-      padding: 10px 20px;
-      background: #007bff;
-      color: #fff;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-    }
-    button:hover {
-      background: #0056b3;
-    }
-    .results {
-      margin-top: 20px;
-    }
-    .result-card {
-      background: #fff;
-      border-radius: 10px;
-      padding: 15px;
-      margin: 10px 0;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
-    }
-    .result-card h3 {
-      margin-top: 0;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 10px;
-    }
-    table, th, td {
-      border: 1px solid #ddd;
-    }
-    th, td {
-      padding: 8px;
-      text-align: center;
-    }
-    .green { color: green; font-weight: bold; }
-    .red { color: red; font-weight: bold; }
+    body { font-family: Arial, sans-serif; margin: 20px; background: #fafafa; }
+    h2 { text-align: center; }
+    .top-inputs { display: flex; gap: 20px; justify-content: center; margin-bottom: 20px; }
+    .top-inputs label { font-weight: bold; }
+    .procedure-section { display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; margin-bottom: 20px; }
+    .procedure-box { border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: #fff; width: 280px; }
+    .procedure-box h3 { margin-top: 0; font-size: 18px; }
+    .cat-row { display: flex; gap: 10px; margin-bottom: 10px; }
+    .cat-row input { width: 60px; padding: 4px; }
+    .buttons { text-align: center; margin: 20px; }
+    button { padding: 10px 20px; margin: 0 10px; border: none; border-radius: 6px; cursor: pointer; }
+    button.calculate { background: #007bff; color: #fff; }
+    button.clear { background: #dc3545; color: #fff; }
+    .summary { margin-top: 30px; border-top: 2px solid #ccc; padding-top: 20px; }
+    .summary h3 { text-align: center; }
+    .result-card { background: #fff; border: 1px solid #ddd; border-radius: 8px; margin: 10px auto; padding: 10px 15px; width: 400px; }
+    .result-card h4 { margin: 0 0 10px; }
+    .result-line { font-size: 14px; margin: 2px 0; }
   </style>
 </head>
 <body>
-  <h1>Aviation Minima Calculator</h1>
 
-  <div class="section">
-    <h2>General Inputs</h2>
-    <label>AD Elevation: <input type="number" id="adElevation"></label>
-    <label>THR Elevation: <input type="number" id="thrElevation"></label>
-    <label>Lighting Type:
-      <select id="lightingType">
+  <h2>Aviation Calculator Tool</h2>
+
+  <!-- Top Inputs -->
+  <div class="top-inputs">
+    <div>
+      <label>AD Elev (m)</label><br>
+      <input type="number" id="adElev" value="0">
+    </div>
+    <div>
+      <label>THR Elev (m)</label><br>
+      <input type="number" id="thrElev" value="0">
+    </div>
+    <div>
+      <label>Light</label><br>
+      <select id="lightType">
         <option value="FALS">FALS</option>
         <option value="IALS">IALS</option>
         <option value="BALS">BALS</option>
         <option value="NALS">NALS</option>
       </select>
-    </label>
-    <label>Procedure Type:
-      <select id="procType">
-        <option value="Precision">Precision</option>
-        <option value="NonPrecision">Non-Precision</option>
-        <option value="Circling">Circling</option>
-      </select>
-    </label>
-  </div>
-
-  <div class="section">
-    <h2>Approach Options</h2>
-    <div class="checkbox-group">
-      <label><input type="checkbox" id="cdfa"> CDFA</label>
-      <label><input type="checkbox" id="nonCdfa"> Non-CDFA</label>
-      <label><input type="checkbox" id="nonCdfaAB"> Non-CDFA CAT A/B only</label>
-      <label><input type="checkbox" id="nonCdfaCD"> Non-CDFA CAT C/D only</label>
+    </div>
+    <div>
+      <label>Procedure</label><br>
+      <input type="radio" name="cdfa" value="CDFA" checked> CDFA
+      <input type="radio" name="cdfa" value="NON CDFA"> NON CDFA
     </div>
   </div>
 
-  <div class="section">
-    <h2>User Inputs</h2>
-    <label>MDH / DH: <input type="number" id="userMdh"></label>
-    <label>MDA: <input type="number" id="userMda"></label>
-    <label>RVR (m): <input type="number" id="userRvr"></label>
-    <label>CIRCLING VIS (km): <input type="number" id="userVis"></label>
+  <!-- Procedure Selection -->
+  <div style="text-align:center; margin-bottom:10px;">
+    <label><input type="checkbox" class="proc" value="CAT1"> CAT 1</label>
+    <label><input type="checkbox" class="proc" value="RNP"> RNP</label>
+    <label><input type="checkbox" class="proc" value="GLS"> GLS</label>
+    <label><input type="checkbox" class="proc" value="PAR"> PAR</label>
+    <label><input type="checkbox" class="proc" value="LPV"> LPV</label>
+    <label><input type="checkbox" class="proc" value="LNAVVNAV"> LNAV/VNAV</label>
+    <label><input type="checkbox" class="proc" value="LOC"> LOC</label>
+    <label><input type="checkbox" class="proc" value="LOCDME"> LOC+DME</label>
+    <label><input type="checkbox" class="proc" value="VORDME"> VOR+DME</label>
+    <label><input type="checkbox" class="proc" value="LNAV"> LNAV</label>
+    <label><input type="checkbox" class="proc" value="SRA"> SRA</label>
+    <label><input type="checkbox" class="proc" value="LDA"> LDA</label>
+    <label><input type="checkbox" class="proc" value="VOR"> VOR</label>
+    <label><input type="checkbox" class="proc" value="NDBDME"> NDB+DME</label>
+    <label><input type="checkbox" class="proc" value="NDB"> NDB</label>
+    <label><input type="checkbox" class="proc" value="Circling"> Circling</label>
   </div>
 
-  <div class="section">
-    <button onclick="calculate()">Calculate</button>
+  <!-- Procedure Input Boxes -->
+  <div id="procedureInputs" class="procedure-section"></div>
+
+  <!-- Buttons -->
+  <div class="buttons">
+    <button class="calculate" onclick="calculateAll()">Calculate All</button>
+    <button class="clear" onclick="clearAll()">Clear All</button>
   </div>
 
-  <div class="results" id="results"></div>
+  <!-- Summary -->
+  <div class="summary">
+    <h3>Summary of Results</h3>
+    <div id="results"></div>
+  </div>
 
   <script src="calculator.js"></script>
 </body>
