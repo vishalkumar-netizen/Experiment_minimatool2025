@@ -430,3 +430,43 @@ window.addEventListener('DOMContentLoaded', function() {
     // Update the UI accordingly
     if (typeof updateCalculatorVisibility === 'function') updateCalculatorVisibility();
 });
+// --- Custom Clear All: Only Circling checked ---
+(function(){
+    // Find your Clear All button (update selector if needed)
+    const clearBtn = document.getElementById('clearAllBtn');
+    if(clearBtn) {
+        clearBtn.addEventListener('click', function() {
+            // Clear all numbers and text
+            document.querySelectorAll('input[type="number"], input[type="text"]').forEach(el => el.value = '');
+
+            // Reset all result blocks
+            document.querySelectorAll('.result').forEach(el => el.innerText = '');
+            document.getElementById('summaryResults').innerHTML = '';
+
+            // Reset radio buttons: Default to CDFA
+            document.getElementById('cdfa').checked = true;
+            document.getElementById('noncdfa').checked = false;
+            // Hide Non CDFA subgroup, uncheck suboptions
+            document.getElementById('noncdfaSubGroup').style.display = 'none';
+            document.getElementById('noncdfa_ab').checked = false;
+            document.getElementById('noncdfa_cd').checked = false;
+
+            // Uncheck all procedures
+            [...PRECISION_PROC, ...NONPRECISION_PROC_250, ...NONPRECISION_PROC_300, ...NONPRECISION_PROC_350].forEach(proc => {
+                let el = document.getElementById('show_'+proc.code);
+                if(el) el.checked = false;
+            });
+            // Check only circling
+            CIRCLING_PROC.forEach(proc => {
+                let el = document.getElementById('show_'+proc.code);
+                if(el) el.checked = true;
+            });
+
+            updateCalculatorVisibility();
+
+            // Optional: scroll to top, focus first input, or reset selects if you want
+            window.scrollTo(0,0);
+
+        });
+    }
+})();
