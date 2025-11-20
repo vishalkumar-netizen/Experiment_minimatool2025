@@ -28,6 +28,12 @@
         #summaryResults h2 { text-align:center;margin-bottom:8px;}
         #summaryResults h3 { margin-bottom:0;}
         .footer { text-align: center; margin-top: 26px; padding-top: 20px; border-top: 1px solid #ddd; color: #666; font-size: 14px; }
+        
+        /* Toggle Switch Style */
+        .toggle-wrapper { border: 1px solid #ccc; padding: 6px 10px; border-radius: 4px; background: #fff; display: flex; flex-direction: column; justify-content: center; }
+        .toggle-label { font-size: 0.85em; color: #333; margin-bottom: 4px; font-weight: bold;}
+        .toggle-control { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.9em; }
+
         @media (max-width: 800px) {
           .calculators { flex-direction: column; }
           .top-inputs { flex-direction: column; align-items: flex-start; }
@@ -46,6 +52,15 @@
                 <label>THR Elev (ft)</label>
                 <input type="number" id="thrElev" placeholder="0">
             </div>
+            
+            <div class="toggle-wrapper">
+                <span class="toggle-label">Conversion</span>
+                <label class="toggle-control">
+                    <input type="checkbox" id="meterToFeetToggle">
+                    <span>Input in Meters</span>
+                </label>
+            </div>
+
             <div class="input-group">
                 <label>ALS</label>
                 <select id="lightType">
@@ -80,46 +95,24 @@
             This tool was created by Vishal Kumar Basson
         </div>
     </div>
-    <script src="calculator.js"></script>
-    <!-- ============ Fixed Top-Right Zoom Controls ============ -->
-<div id="page-zoom-controls" style="
-  position: fixed;
-  top: 18px; 
-  right: 24px; 
-  z-index: 2000;
-  display: flex; 
-  gap: 10px; 
-  align-items:center;
-  background: rgba(245,245,245,0.96); 
-  border-radius:8px;
-  padding: 8px 16px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-">
-  <button type="button" onclick="zoomPage('+')" title="Zoom in" style="font-size:18px;">+</button>
-  <button type="button" onclick="zoomPage('-')" title="Zoom out" style="font-size:18px;">-</button>
-  <span id="zoom-indicator" style="margin-left:8px;font-size:14px; color:#444;"></span>
-</div>
-    <style>
-.state-indicator {
-  display: inline-block;
-  min-width: 90px;
-  font-weight: bold;
-  text-align: center;
-  padding: 7px 18px;
-  border-radius: 7px;
-  margin-right: 12px;
-  font-size: 16px;
-}
-.state-standard {
-  background: #e2fbe0;
-  color: #208c2c;
-  border: 2px solid #30ba4c;
-}
-.state-state {
-  background: #ffd6d6;
-  color: #be2222;
-  border: 2px solid #da3131;
-}
-</style>
+    <script src="Calculator.js"></script>
+    
+    <div id="page-zoom-controls" style="
+      position: fixed;
+      top: 18px; 
+      right: 24px; 
+      z-index: 2000;
+      display: flex; 
+      gap: 10px; 
+      align-items:center;
+      background: rgba(245,245,245,0.96); 
+      border-radius:8px;
+      padding: 8px 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    ">
+      <button type="button" onclick="zoomPage('+')" title="Zoom in" style="font-size:18px;">+</button>
+      <button type="button" onclick="zoomPage('-')" title="Zoom out" style="font-size:18px;">-</button>
+      <span id="zoom-indicator" style="margin-left:8px;font-size:14px; color:#444;"></span>
+    </div>
 </body>
 </html>
