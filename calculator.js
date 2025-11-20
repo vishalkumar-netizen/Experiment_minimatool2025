@@ -65,13 +65,14 @@ function getRVRFromTable(dh, lightType) {
 }
 function roundUpTo10(x) { return Math.ceil(x/10)*10; }
 
-// --- UI Generation
+// --- UI Generation ---
 function renderProcedureCheckboxes() {
     let html = "";
+    // Note: added 'checked' to ALL inputs below so they are visible by default
     PRECISION_PROC.forEach(p=>{ html += `<label><input type="checkbox" id="show_${p.code}" checked> ${p.name}</label>`; });
-    NONPRECISION_PROC_250.forEach(p=>{ html += `<label><input type="checkbox" id="show_${p.code}"> ${p.name}</label>`; });
-    NONPRECISION_PROC_300.forEach(p=>{ html += `<label><input type="checkbox" id="show_${p.code}"> ${p.name}</label>`; });
-    NONPRECISION_PROC_350.forEach(p=>{ html += `<label><input type="checkbox" id="show_${p.code}"> ${p.name}</label>`; });
+    NONPRECISION_PROC_250.forEach(p=>{ html += `<label><input type="checkbox" id="show_${p.code}" checked> ${p.name}</label>`; });
+    NONPRECISION_PROC_300.forEach(p=>{ html += `<label><input type="checkbox" id="show_${p.code}" checked> ${p.name}</label>`; });
+    NONPRECISION_PROC_350.forEach(p=>{ html += `<label><input type="checkbox" id="show_${p.code}" checked> ${p.name}</label>`; });
     html += '<label><input type="checkbox" id="show_circling" checked> Circling</label>';
     document.getElementById('procedureCheckboxes').innerHTML = html;
 }
@@ -330,14 +331,12 @@ function clearAllInputs() {
     // Reset Meter toggle to off
     document.getElementById('meterToFeetToggle').checked = false;
 
-    [...PRECISION_PROC, ...CIRCLING_PROC].forEach(proc => {
+    // Default check ALL procedures
+    [...PRECISION_PROC, ...NONPRECISION_PROC_250, ...NONPRECISION_PROC_300, ...NONPRECISION_PROC_350, ...CIRCLING_PROC].forEach(proc => {
         let el = document.getElementById('show_'+proc.code);
         if(el) el.checked = true;
     });
-    [...NONPRECISION_PROC_250, ...NONPRECISION_PROC_300, ...NONPRECISION_PROC_350].forEach(proc => {
-        let el = document.getElementById('show_'+proc.code);
-        if(el) el.checked = false;
-    });
+
     updateCalculatorVisibility();
     window.scrollTo(0,0);
 }
