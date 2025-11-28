@@ -72,6 +72,18 @@
           color: #be2222;
           border: 2px solid #da3131;
         }
+        
+        /* Raise Circling Warning Style */
+        .raise-circling-note {
+            color: #d9534f;
+            background-color: #f9f2f4;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+            margin-left: 10px;
+            border: 1px solid #ebccd1;
+            font-size: 0.9em;
+        }
     </style>
 </head>
 <body>
@@ -522,6 +534,32 @@
             calculate(); // Run initial calculation on load
         });
         
+        // Helper to parse "DA: 500(200), RVR: 1000m" or "MDA: 600(300), VIS: 2.4km"
+        // Returns { alt: number, vis: number (meters) }
+        function parseResultString(str) {
+            if(!str) return null;
+            
+            // Regex to find "DA: 123" or "MDA: 123"
+            // We want the first number which is the Main Altitude (DA/MDA)
+            let altMatch = /(?:DA|MDA):\s*(\d+)/.exec(str);
+            let alt = altMatch ? parseInt(altMatch[1]) : 0;
+
+            // Regex for RVR (m)
+            let rvrMatch = /RVR:\s*(\d+)/.exec(str);
+            // Regex for VIS (km)
+            let visMatch = /VIS:\s*(\d+(\.\d+)?)/.exec(str);
+
+            let visibilityInMeters = 0;
+            if (rvrMatch) {
+                visibilityInMeters = parseFloat(rvrMatch[1]);
+            } else if (visMatch) {
+                // Convert KM to M
+                visibilityInMeters = parseFloat(visMatch[1]) * 1000;
+            }
+
+            return { alt, visibilityInMeters };
+        }
+
         // Advanced Summary Results with State logic
         function updateSummaryResults(results) {
             const useMeterConversion = document.getElementById('meterToFeetConversion').checked;
@@ -544,6 +582,18 @@
                 ...CIRCLING_PROC
             ].filter(proc => document.getElementById('show_'+proc.code)?.checked);
             
+            // Extract Circling Baseline Data (if available)
+            let circlingData = {}; // { A: {alt: 600, vis: 1500}, B: ... }
+            if (results['circling']) {
+                CATS.forEach(cat => {
+                    const resStr = results['circling'][cat];
+                    const parsed = parseResultString(resStr);
+                    if(parsed) {
+                        circlingData[cat] = parsed;
+                    }
+                });
+            }
+
             function isStateValue(proc, cat, value) {
                 let regulatoryMin = null;
 
@@ -611,7 +661,10 @@
                 CATS.forEach(cat=>{
                     const resultText = results[proc.code][cat] || '';
                     let highlight = '';
+                    let raiseCirclingWarning = '';
+
                     if(resultText) {
+                        // 1. STATE Check
                         let m = /RVR:\s*(\d+(?:\.\d+)?)m/i.exec(resultText);
                         if(!m) m = /VIS:\s*(\d+(?:\.\d+)?)/i.exec(resultText);
                         if(m) {
@@ -621,8 +674,28 @@
                                 anyState = true;
                             }
                         }
+
+                        // 2. RAISE CIRCLING Check (New Rule)
+                        // Don't check circling against itself
+                        if(proc.code !== 'circling' && circlingData[cat]) {
+                            const thisProcData = parseResultString(resultText);
+                            const circProcData = circlingData[cat];
+
+                            if(thisProcData && circProcData) {
+                                // Vertical Check: Proc Altitude > Circling Altitude
+                                const verticalFail = thisProcData.alt > circProcData.alt;
+                                // Vis Check: Proc Vis (m) > Circling Vis (m)
+                                const visFail = thisProcData.visibilityInMeters > circProcData.visibilityInMeters;
+
+                                if (verticalFail || visFail) {
+                                    // Make the text red/bold if not already (State check might have done it, but this reinforces it)
+                                    highlight = "color:#be2222;font-weight:bold;";
+                                    raiseCirclingWarning = `<span class="raise-circling-note">Raise Circling</span>`;
+                                }
+                            }
+                        }
                     }
-                    html += `<div>CAT ${cat}: <span style="${highlight}">${resultText}</span></div>`;
+                    html += `<div>CAT ${cat}: <span style="${highlight}">${resultText}</span>${raiseCirclingWarning}</div>`;
                 });
                 html += `</div>`;
             });
