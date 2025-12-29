@@ -156,7 +156,7 @@
         <button class="calculate-btn" type="button" onclick="clearAllInputs()">Clear All</button>
         <div id="summaryResults"></div>
         <div class="footer">
-            This tool was created by Vishal Kumar Basson, Other Contributer - Shubham Bundele (Add 'Circling Raise' & CEIL)
+            This tool was created by Vishal Kumar Basson
         </div>
     </div>
 
@@ -435,21 +435,32 @@
             let circlingLowerFound = false; // Flag for Blue Label
 
             // Helper to add a Circling @ result
-            function checkAndAddCirclingAt(procName, cat, si_mdh_check, si_vis_km) {
+            function checkAndAddCirclingAt(procName, cat, si_mdh_check, si_mda_check, si_vis_km) {
                 const std = stdCirclingValues[cat];
                 
-                // Compare: If Straight-In MDH > Standard Circling MDH OR Straight-In Vis > Standard Circling Vis
-                if (si_mdh_check > std.mdh || si_vis_km > std.vis) {
-                    
-                    // Apply Circling Rules: Use Higher Value
-                    const newMDH = Math.max(si_mdh_check, std.mdh);
-                    const newVis = Math.max(si_vis_km, std.vis);
-                    
-                    // Calc new MDA based on AD Elev (Circling Rule)
-                    const newMDA = roundUpTo10(adElev + newMDH);
-                    
-                    // Format Result
-                    const resStr = `MDA: ${newMDA}(${newMDH}), VIS: ${newVis}km`;
+                // 1. Determine the higher requirement for VIS
+                const newVis = Math.max(si_vis_km, std.vis);
+                
+                // 2. Determine the higher requirement for MDH/MDA
+                // Start with the higher of the two MDHs (SI vs Std)
+                let baseMDH = Math.max(si_mdh_check, std.mdh);
+                // Calculate resulting MDA using Circling Method (AD Elev + MDH)
+                let newMDA = roundUpTo10(adElev + baseMDH);
+                
+                // Per user request: If SI MDA is higher, ensure we don't go below it.
+                // This ensures Circling Minima >= Straight-In Minima.
+                if (si_mda_check > newMDA) {
+                    newMDA = si_mda_check;
+                    // Recalculate MDH to match this MDA (Height above AD)
+                    baseMDH = newMDA - adElev;
+                }
+                
+                // 3. Check if this results in higher minima than Standard Circling
+                const isHigherMDA = newMDA > std.mda; 
+                const isHigherVis = newVis > std.vis;
+                
+                if (isHigherMDA || isHigherVis) {
+                    const resStr = `MDA: ${newMDA}(${baseMDH}), VIS: ${newVis}km`;
                     
                     circlingAtResults.push({
                         label: `Circling @ ${procName}`,
@@ -489,17 +500,14 @@
                     if(!isNonCDFAForCat(cat)) {
                         // CDFA / Precision Logic with Cap
                         
-                        // --- NEW PRECISION OVERRIDE LOGIC ---
-                        if (rvr > 2400) {
-                            // If Entered Value (converted to meters) > 2400m, directly use entered value.
-                            rvrFinal = rvr;
-                        } else {
-                            // Otherwise, standard logic with 2400m Cap on Table Value
-                            // Standard Capped = min(RawTable, 2400)
-                            const standardCapped = Math.min(rvrTable, 2400);
-                            // Final = max(StandardCapped, UserInput)
-                            rvrFinal = Math.max(standardCapped, rvr);
-                        }
+                        // Define Max Cap based on Category (A/B: 1500m, C/D: 2400m)
+                        const maxCap = ['A','B'].includes(cat) ? 1500 : 2400;
+
+                        // Standard Capped = min(RawTable, maxCap)
+                        const standardCapped = Math.min(rvrTable, maxCap);
+                        
+                        // Final = max(StandardCapped, UserInput)
+                        rvrFinal = Math.max(standardCapped, rvr);
                     } else {
                          // Fallback for Non-CDFA on precision (rare)
                          rvrFinal = Math.max(rvrTable, rvr);
@@ -532,7 +540,7 @@
 
                     // ** NEW: Check for Circling @ **
                     if (daRaw||dhRaw||rvrRaw) {
-                        checkAndAddCirclingAt(proc.name, cat, dhRaised, rvrFinal/1000);
+                        checkAndAddCirclingAt(proc.name, cat, dhRaised, daFinal, rvrFinal/1000);
                     }
                 });
             });
@@ -598,7 +606,7 @@
                         document.getElementById(`${proc.code}_${cat}_result`).innerText = res;
                         summary[proc.code][cat] = res;
                         // Still check for Circling @ with forced values
-                        checkAndAddCirclingAt(proc.name, cat, mdhUsed, 5.0);
+                        checkAndAddCirclingAt(proc.name, cat, mdhUsed, calcMDA, 5.0);
                         // Also check label logic
                         if (calcMDA > stdCirclingValues[cat].mda) circlingLowerFound = true;
                         return; 
@@ -643,7 +651,7 @@
                     
                     // ** NEW: Check for Circling @ **
                     if (mdaRaw||mdhRaw||rvrRaw) {
-                        checkAndAddCirclingAt(proc.name, cat, mdhUsed, rvrFinal/1000);
+                        checkAndAddCirclingAt(proc.name, cat, mdhUsed, calcMDA, rvrFinal/1000);
                     }
                 });
             });
@@ -767,12 +775,8 @@
                         dhRaised = Math.max(dhCheck, 200);
                     }
                     const tableVal = getRVRFromTable(dhRaised, document.getElementById('lightType').value);
-                    // Precision Cap Logic for State Check: Standard = min(table, 2400)
-                    // We use 2400 for all here because user asked for general override > 2400.
-                    // But strictly speaking, standard cap is 1500/2400. 
-                    // Let's assume State Logic follows the general override rule:
-                    // If entered > 2400, it is State (because standard is capped at 2400 max).
-                    const cap = 2400; 
+                    // Precision Cap Logic for State Check
+                    const cap = ['A','B'].includes(cat) ? 1500 : 2400;
                     regulatoryMin = Math.min(tableVal, cap);
 
                 } else if (CIRCLING_PROC.some(p=>p.code===proc)) {
