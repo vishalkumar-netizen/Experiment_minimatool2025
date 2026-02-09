@@ -3,132 +3,210 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF Master Tool | By Vishal Kumar</title>
+    <title>PDF Tool Suite | Created by Vishal Kumar</title>
+    
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- PDF-Lib for PDF manipulation -->
     <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
+
+    <!-- JSZip for zipping split files -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    
+    <!-- FileSaver.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+    <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
+    
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap');
-        body { font-family: 'Plus+Jakarta+Sans', sans-serif; }
-        .drag-active { border-color: #3b82f6; background-color: #eff6ff; transform: scale(1.01); }
-        .dragging { opacity: 0.5; border: 2px dashed #3b82f6; }
-        .tab-btn.active { color: #2563eb; border-bottom: 3px solid #2563eb; }
-        .sort-pill { font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; }
-        .pill-l { background: #dcfce7; color: #166534; } 
-        .pill-i { background: #dbeafe; color: #1e40af; } 
-        .pill-m { background: #fef9c3; color: #854d0e; } 
-        .pill-h { background: #fee2e2; color: #991b1b; }
+        .drag-active {
+            border-color: #3b82f6;
+            background-color: #eff6ff;
+            transform: scale(1.01);
+        }
+        
+        .file-list {
+            overflow: visible;
+        }
+        
+        .dragging {
+            opacity: 0.5;
+            border: 2px dashed #3b82f6;
+            background-color: #f8fafc;
+        }
+        
+        .tab-btn.active {
+            color: #2563eb;
+            border-bottom-color: #2563eb;
+            background-color: #eff6ff;
+        }
+
+        @keyframes sparkle {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+        }
+        .sparkle-icon {
+            animation: sparkle 2s infinite;
+        }
+
+        .creator-badge {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+            padding: 0.2rem 0.75rem;
+            border-radius: 9999px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .file-item-hover:hover {
+            border-color: #3b82f6;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
     </style>
 </head>
-<body class="bg-slate-50 min-h-screen pb-12 text-slate-900">
+<body class="bg-slate-50 min-h-screen font-sans text-slate-800 pb-12">
 
     <div class="max-w-4xl mx-auto px-4 py-8">
+        
         <!-- Header -->
-        <header class="text-center mb-8">
-            <h1 class="text-4xl font-extrabold flex items-center justify-center gap-3">
-                <i data-lucide="zap" class="w-10 h-10 text-yellow-500 fill-current"></i>
+        <header class="text-center mb-6">
+            <h1 class="text-3xl font-bold text-slate-900 mb-2 flex items-center justify-center gap-3">
+                <i data-lucide="layers" class="w-8 h-8 text-blue-600"></i>
                 PDF Master Tool
             </h1>
-            <p class="text-slate-500 font-medium mt-2">No creepy servers. Just you and your files. 🤙</p>
-            <div class="mt-4 inline-flex items-center gap-2 bg-blue-600 text-white px-4 py-1.5 rounded-full text-sm font-bold shadow-lg">
-                <i data-lucide="user" class="w-4 h-4"></i>
-                Made by Vishal Kumar
+            <div class="flex flex-col items-center gap-2">
+                <p class="text-slate-500 text-sm">Easy to use, Secure and Open Source.</p>
+                <div class="creator-badge text-xs">
+                    <i data-lucide="user" class="w-3.5 h-3.5"></i>
+                    Created by Vishal Kumar
+                </div>
             </div>
         </header>
 
-        <!-- Tabs -->
-        <nav class="flex justify-center mb-8 border-b border-slate-200">
-            <button onclick="switchTab('merge')" id="tab-merge" class="tab-btn active px-8 py-3 font-extrabold text-slate-400 hover:text-blue-500 transition-all flex items-center gap-2">
-                MASH 'EM (MERGE)
+        <!-- Navigation Tabs -->
+        <nav class="flex justify-center mb-6 border-b border-slate-200">
+            <button onclick="switchTab('merge')" id="tab-merge" class="tab-btn active px-6 py-2.5 font-semibold text-slate-500 border-b-2 border-transparent hover:text-blue-500 transition-all flex items-center gap-2">
+                <i data-lucide="combine" class="w-4 h-4"></i> Merge
             </button>
-            <button onclick="switchTab('split')" id="tab-split" class="tab-btn px-8 py-3 font-extrabold text-slate-400 hover:text-blue-500 transition-all flex items-center gap-2">
-                RIP 'EM (SPLIT)
+            <button onclick="switchTab('split')" id="tab-split" class="tab-btn px-6 py-2.5 font-semibold text-slate-500 border-b-2 border-transparent hover:text-blue-500 transition-all flex items-center gap-2">
+                <i data-lucide="scissors" class="w-4 h-4"></i> Split
             </button>
         </nav>
 
         <!-- MERGE SECTION -->
-        <section id="view-merge" class="bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden">
-            <div class="p-8">
-                <div id="drop-zone-merge" class="border-4 border-dashed border-slate-200 rounded-2xl p-12 text-center hover:border-blue-400 hover:bg-blue-50 transition-all cursor-pointer relative group">
+        <section id="view-merge" class="bg-white rounded-2xl shadow-xl border border-slate-200 mb-6">
+            <div class="p-6">
+                <div id="drop-zone-merge" class="border-2 border-dashed border-slate-300 rounded-xl p-8 text-center transition-all duration-200 hover:border-blue-400 hover:bg-slate-50 cursor-pointer group relative">
                     <input type="file" id="file-input-merge" multiple accept=".pdf" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
                     <div class="pointer-events-none">
-                        <div class="w-16 h-16 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:rotate-12 transition-transform">
-                            <i data-lucide="plus" class="w-10 h-10"></i>
+                        <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
+                            <i data-lucide="upload-cloud" class="w-6 h-6"></i>
                         </div>
-                        <h3 class="text-2xl font-black">Chuck your PDFs here</h3>
-                        <p class="text-slate-400 font-bold mt-1">Everything stays on your machine, lol.</p>
+                        <h3 class="text-lg font-bold text-slate-700">Drop PDF files here</h3>
+                        <p class="text-slate-400 text-sm mt-1">or click to browse your computer</p>
                     </div>
                 </div>
             </div>
 
-            <!-- Toolbar -->
-            <div id="merge-toolbar" class="hidden px-8 py-4 bg-slate-50 border-y border-slate-100 flex flex-wrap gap-3 justify-between items-center">
-                <div class="flex items-center gap-2">
-                    <button onclick="sortFiles('cap')" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-black flex items-center gap-2 shadow-lg active:scale-95 transition-all">
-                        <i data-lucide="plane" class="w-4 h-4"></i> CAP A1 SORT
+            <!-- Toolbar with Sort and AI Features -->
+            <div id="merge-toolbar" class="hidden px-6 py-3 bg-slate-50 border-y border-slate-200 flex flex-wrap gap-2 justify-between items-center">
+                <div class="flex items-center gap-2 flex-wrap">
+                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Sort:</span>
+                    <button onclick="sortFiles('cap')" class="px-3 py-2 bg-blue-600 border border-blue-700 rounded-md text-sm hover:bg-blue-700 text-white flex items-center gap-1.5 shadow-sm font-bold transition-all">
+                        <i data-lucide="check-square" class="w-4 h-4"></i> Short - CAP A1 & Final PDF
                     </button>
-                    <button onclick="sortFiles('num')" class="px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold hover:bg-slate-50">1, 2, 3...</button>
-                    <button id="ai-rename-btn" onclick="suggestMergedName()" class="px-4 py-2.5 bg-indigo-50 border border-indigo-100 text-indigo-700 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-indigo-100">
-                        <i data-lucide="sparkles" class="w-4 h-4"></i> AI Rename
+                    <button onclick="sortFiles('num')" class="px-3 py-2 bg-white border border-slate-200 rounded-md text-sm hover:bg-slate-50 text-slate-700 flex items-center gap-1.5 shadow-sm font-bold transition-all">
+                        <i data-lucide="list-ordered" class="w-4 h-4"></i> 1 2 3
+                    </button>
+                    <button onclick="sortFiles('asc')" class="px-3 py-2 bg-white border border-slate-200 rounded-md text-sm hover:bg-slate-50 text-slate-700 flex items-center gap-1.5 shadow-sm transition-all">
+                        <i data-lucide="arrow-down-a-z" class="w-4 h-4"></i> A-Z
+                    </button>
+                    <button id="ai-rename-btn" onclick="suggestMergedName()" class="px-3 py-2 bg-blue-50 border border-blue-200 rounded-md text-sm hover:bg-blue-100 text-blue-700 flex items-center gap-1.5 ml-2 shadow-sm transition-all">
+                        <i data-lucide="sparkles" class="w-4 h-4 sparkle-icon"></i> ✨ AI Rename
                     </button>
                 </div>
-                <button onclick="clearMergeFiles()" class="text-sm text-red-500 font-black hover:underline">Clear all</button>
+                <button onclick="clearMergeFiles()" class="text-sm text-red-500 hover:text-red-700 font-bold px-2 py-1">Clear All</button>
             </div>
 
-            <ul id="file-list-merge" class="hidden p-8 space-y-4 bg-slate-50/50 max-h-[500px] overflow-y-auto"></ul>
+            <!-- Full File List -->
+            <ul id="file-list-merge" class="file-list hidden p-4 space-y-3 bg-slate-50/50"></ul>
 
-            <div class="p-8 bg-white border-t border-slate-100">
-                <div class="flex flex-col sm:flex-row gap-4 items-center">
-                    <input type="text" id="custom-filename" placeholder="Name your new file..." class="px-5 py-4 border-2 border-slate-100 rounded-2xl text-base w-full focus:ring-4 focus:ring-blue-100 focus:border-blue-500 focus:outline-none font-bold outline-none transition-all">
-                    <button id="merge-btn" onclick="mergePDFs()" disabled class="w-full sm:w-auto px-10 py-4 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-2xl font-black shadow-xl transition-all flex items-center justify-center gap-2 whitespace-nowrap transform active:scale-95">
-                        DO THE THING 🚀
-                    </button>
+            <!-- Merge Controls -->
+            <div class="p-6 bg-white border-t border-slate-200">
+                <div class="flex flex-col sm:flex-row gap-4 items-center justify-between">
+                    <div id="status-msg-merge" class="text-sm font-medium text-blue-600 hidden flex items-center gap-2">
+                        <div class="animate-spin rounded-full h-4 w-4 border-2 border-blue-600 border-t-transparent"></div>
+                        Merging your files...
+                    </div>
+                    <div class="flex items-center gap-2 w-full sm:w-auto">
+                        <input type="text" id="custom-filename" placeholder="Output filename" class="px-4 py-3 border border-slate-300 rounded-xl text-sm w-full sm:w-64 focus:ring-2 focus:ring-blue-500 focus:outline-none font-medium">
+                        <button id="merge-btn" onclick="mergePDFs()" disabled class="px-8 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white rounded-xl font-bold shadow-lg transition-all flex items-center justify-center gap-2 whitespace-nowrap text-base">
+                            <i data-lucide="merge" class="w-5 h-5"></i> Merge PDFs
+                        </button>
+                    </div>
                 </div>
-                <div id="status-msg-merge" class="mt-4 text-center font-bold text-blue-600 hidden">Wait a sec, mashing them up...</div>
             </div>
         </section>
 
         <!-- SPLIT SECTION -->
-        <section id="view-split" class="hidden bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden">
+        <section id="view-split" class="hidden bg-white rounded-2xl shadow-xl border border-slate-200 mb-6">
             <div class="p-8">
-                <div id="drop-zone-split" class="border-4 border-dashed border-slate-200 rounded-2xl p-12 text-center hover:border-purple-400 hover:bg-purple-50 transition-all cursor-pointer relative group">
+                <div id="drop-zone-split" class="border-2 border-dashed border-slate-300 rounded-xl p-10 text-center transition-all duration-200 hover:border-purple-400 hover:bg-slate-50 cursor-pointer group relative">
                     <input type="file" id="file-input-split" accept=".pdf" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
                     <div class="pointer-events-none">
-                        <div class="w-16 h-16 bg-purple-100 text-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                            <i data-lucide="scissors" class="w-10 h-10"></i>
+                        <div class="w-14 h-14 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
+                            <i data-lucide="file-minus" class="w-8 h-8"></i>
                         </div>
-                        <h3 class="text-2xl font-black">Drop a PDF to rip it</h3>
-                        <p class="text-slate-400 font-bold mt-1">One page per file, zipped up. Boom.</p>
+                        <h3 class="text-lg font-bold text-slate-700">Drop 1 PDF to Split</h3>
+                        <p class="text-slate-400 text-sm mt-1">Extracts all pages into a ZIP archive</p>
                     </div>
                 </div>
                 
-                <div id="split-file-info" class="hidden mt-4 p-6 bg-purple-50 rounded-2xl flex items-center justify-between">
-                    <div class="flex items-center gap-4">
-                        <div class="p-3 bg-purple-600 text-white rounded-xl shadow-lg">
-                            <i data-lucide="file-text" class="w-6 h-6"></i>
+                <div id="split-file-info" class="hidden mt-4 p-6 bg-purple-50 border border-purple-100 rounded-xl shadow-inner">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center gap-4 overflow-hidden">
+                            <div class="p-3 bg-purple-600 text-white rounded-lg">
+                                <i data-lucide="file-text" class="w-6 h-6"></i>
+                            </div>
+                            <span id="split-filename" class="font-bold text-slate-800 truncate text-lg">filename.pdf</span>
                         </div>
-                        <span id="split-filename" class="font-black text-slate-800 uppercase tracking-tight truncate max-w-[200px]">doc.pdf</span>
+                        <button onclick="clearSplitFile()" class="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors">
+                            <i data-lucide="x" class="w-6 h-6"></i>
+                        </button>
                     </div>
-                    <button onclick="clearSplitFile()" class="p-2 text-slate-400 hover:text-red-500 transition-colors">
-                        <i data-lucide="x-circle" class="w-6 h-6"></i>
-                    </button>
+                    
+                    <div class="pt-4 border-t border-purple-200">
+                        <button onclick="summarizePdf()" id="ai-summary-btn" class="flex items-center gap-2 text-sm font-bold text-purple-700 bg-white border border-purple-200 px-4 py-2.5 rounded-lg hover:bg-purple-100 transition-all shadow-sm">
+                            <i data-lucide="sparkles" class="w-4 h-4 sparkle-icon"></i> ✨ AI Generate Summary
+                        </button>
+                        <div id="summary-content" class="hidden mt-3 p-4 bg-white rounded-lg border border-purple-100 text-sm text-slate-700 italic leading-relaxed shadow-sm">
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div class="p-8 bg-white border-t border-slate-100">
-                <button id="split-btn" onclick="splitPDF()" disabled class="w-full px-10 py-4 bg-purple-600 hover:bg-purple-700 disabled:bg-slate-200 text-white rounded-2xl font-black shadow-xl transition-all flex items-center justify-center gap-2 text-lg">
-                    GRAB THE ZIP 📦
+            <div class="p-6 bg-white border-t border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-4">
+                <div id="status-msg-split" class="text-sm font-medium text-purple-600 hidden flex items-center gap-2">
+                    <div class="animate-spin rounded-full h-4 w-4 border-2 border-purple-600 border-t-transparent"></div>
+                    Processing your document...
+                </div>
+                <button id="split-btn" onclick="splitPDF()" disabled class="w-full sm:w-auto px-8 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-slate-300 text-white rounded-xl font-bold shadow-lg transition-all flex items-center justify-center gap-2 ml-auto text-base">
+                    <i data-lucide="package" class="w-5 h-5"></i> Split & Download ZIP
                 </button>
-                <div id="status-msg-split" class="mt-4 text-center font-bold text-purple-600 hidden">Ripping pages apart...</div>
             </div>
         </section>
 
-        <!-- Footer -->
-        <footer class="mt-12 py-6 text-center">
-            <p class="text-slate-400 text-sm font-bold flex items-center justify-center gap-2">
-                Built with <i data-lucide="heart" class="w-4 h-4 text-red-500 fill-current"></i> by <span class="text-slate-900 font-black">Vishal Kumar</span>
+        <!-- Global Footer -->
+        <footer class="mt-8 py-6 text-center border-t border-slate-200">
+            <p class="text-slate-500 text-sm flex items-center justify-center gap-1 font-medium">
+                Made with <i data-lucide="heart" class="w-3.5 h-3.5 text-red-500 fill-current"></i> by <span class="text-slate-900 font-bold">Vishal Kumar</span>
+            </p>
+            <p class="text-slate-400 text-[10px] mt-1 uppercase tracking-widest font-bold">
+                &copy; <span id="year"></span> PDF Master Tool
             </p>
         </footer>
     </div>
@@ -137,7 +215,39 @@
 
     <script>
         const apiKey = ""; 
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'pdf-master-suite';
+
+        async function callGemini(prompt, systemPrompt = "You are a helpful PDF assistant.") {
+            try {
+                let retries = 0;
+                const maxRetries = 5;
+                while (retries < maxRetries) {
+                    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            contents: [{ parts: [{ text: prompt }] }],
+                            systemInstruction: { parts: [{ text: systemPrompt }] }
+                        })
+                    });
+                    if (response.ok) {
+                        const data = await response.json();
+                        return data.candidates?.[0]?.content?.parts?.[0]?.text || "No response generated.";
+                    }
+                    const delay = Math.pow(2, retries) * 1000;
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    retries++;
+                }
+                throw new Error("Failed after retries");
+            } catch (err) {
+                console.error("Gemini Error:", err);
+                return null;
+            }
+        }
+
         lucide.createIcons();
+        document.getElementById('year').textContent = new Date().getFullYear();
+
         let mergeFiles = [];
         let splitFile = null;
         let dragSrcEl = null;
@@ -148,29 +258,19 @@
         function switchTab(tabName) {
             Object.values(views).forEach(el => el.classList.add('hidden'));
             views[tabName].classList.remove('hidden');
-            Object.values(tabs).forEach(el => el.classList.remove('active'));
-            tabs[tabName].classList.add('active');
-        }
-
-        async function callGemini(prompt) {
-            try {
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        contents: [{ parts: [{ text: prompt }] }],
-                        systemInstruction: { parts: [{ text: "Suggest a short, cool filename for a PDF based on these files. Use underscores, no spaces." }] }
-                    })
-                });
-                const data = await response.json();
-                return data.candidates?.[0]?.content?.parts?.[0]?.text || null;
-            } catch (err) { return null; }
+            Object.values(tabs).forEach(el => {
+                el.classList.remove('active', 'bg-eff6ff', 'text-blue-600');
+                el.classList.add('text-slate-500');
+            });
+            tabs[tabName].classList.add('active', 'bg-eff6ff', 'text-blue-600');
+            tabs[tabName].classList.remove('text-slate-500');
         }
 
         const dropZoneMerge = document.getElementById('drop-zone-merge');
         const fileInputMerge = document.getElementById('file-input-merge');
         const fileListMerge = document.getElementById('file-list-merge');
         const mergeBtn = document.getElementById('merge-btn');
+        const mergeToolbar = document.getElementById('merge-toolbar');
         const customFilenameInput = document.getElementById('custom-filename');
 
         setupDragVisuals(dropZoneMerge);
@@ -178,29 +278,45 @@
         fileInputMerge.addEventListener('change', (e) => { handleMergeFiles(e.target.files); fileInputMerge.value = ''; });
 
         function handleMergeFiles(files) {
-            const validFiles = Array.from(files).filter(f => f.name.toLowerCase().endsWith('.pdf'));
-            mergeFiles = [...mergeFiles, ...validFiles];
+            const newFiles = Array.from(files).filter(f => f.type === 'application/pdf');
+            if (newFiles.length === 0 && files.length > 0) alert("Only PDF files allowed.");
+            mergeFiles = [...mergeFiles, ...newFiles];
             renderMergeList();
         }
 
-        function clearMergeFiles() { mergeFiles = []; renderMergeList(); }
+        function clearMergeFiles() { mergeFiles = []; renderMergeList(); customFilenameInput.value = ''; }
         function removeMergeFile(index) { mergeFiles.splice(index, 1); renderMergeList(); }
-
+        
         function sortFiles(type) {
             if (type === 'cap') {
+                const getPriority = (name) => {
+                    const n = name.toLowerCase();
+                    if (n.includes('laip') || n.includes('laorg')) return 1; // Takeoff
+                    if (n.includes('iaip') || n.includes('iaia') || n.includes('invr') || n.includes('isrr') || n.includes('iaid')) return 2; // IAC
+                    if (n.includes('maip') || n.includes('maia')) return 3; // Minima
+                    if (n.includes('haorg')) return 4; // Heli
+                    return 5; // Everything else
+                };
+
+                const collator = new Intl.Collator(undefined, {numeric: true, sensitivity: 'base'});
+                
+                mergeFiles.sort((a, b) => {
+                    const pA = getPriority(a.name);
+                    const pB = getPriority(b.name);
+                    
+                    if (pA !== pB) return pA - pB;
+                    // If same category, sort numerically/alphabetically by name
+                    return collator.compare(a.name, b.name);
+                });
+            } else if (type === 'num') {
+                const collator = new Intl.Collator(undefined, {numeric: true, sensitivity: 'base'});
+                mergeFiles.sort((a, b) => collator.compare(a.name, b.name));
+            } else {
                 mergeFiles.sort((a, b) => {
                     const nameA = a.name.toLowerCase();
                     const nameB = b.name.toLowerCase();
-                    const isHeliA = nameA.includes('haorg');
-                    const isHeliB = nameB.includes('haorg');
-                    if (isHeliA !== isHeliB) return isHeliA ? 1 : -1;
-                    const getCat = (n) => n.includes('l') ? 1 : (n.includes('i') ? 2 : (n.includes('m') ? 3 : 4));
-                    const catA = getCat(nameA); const catB = getCat(nameB);
-                    if (catA !== catB) return catA - catB;
-                    return new Intl.Collator(undefined, {numeric: true}).compare(nameA, nameB);
+                    return type === 'asc' ? (nameA < nameB ? -1 : 1) : (nameA > nameB ? -1 : 1);
                 });
-            } else {
-                mergeFiles.sort((a, b) => new Intl.Collator(undefined, {numeric: true}).compare(a.name, b.name));
             }
             renderMergeList();
         }
@@ -208,76 +324,106 @@
         async function suggestMergedName() {
             if (mergeFiles.length < 1) return;
             const btn = document.getElementById('ai-rename-btn');
-            btn.innerHTML = 'Thinking...';
-            const suggestion = await callGemini(mergeFiles.map(f => f.name).join(', '));
-            if (suggestion) customFilenameInput.value = suggestion.trim();
-            btn.innerHTML = '<i data-lucide="sparkles" class="w-4 h-4"></i> AI Rename';
-            lucide.createIcons();
+            const originalHtml = btn.innerHTML;
+            btn.innerHTML = '✨ Thinking...';
+            btn.disabled = true;
+            const filenames = mergeFiles.map(f => f.name).join(', ');
+            const prompt = `Based on these PDF filenames, suggest ONE short, professional filename (max 5 words, slugified with underscores) that represents the collection: ${filenames}. Return only the filename without the .pdf extension.`;
+            const suggestion = await callGemini(prompt, "You are a professional file organizer.");
+            if (suggestion) customFilenameInput.value = suggestion.trim().replace(/\.[^/.]+$/, "").replace(/\s+/g, '_');
+            btn.innerHTML = originalHtml;
+            btn.disabled = false;
         }
 
         function renderMergeList() {
             fileListMerge.innerHTML = '';
-            const tool = document.getElementById('merge-toolbar');
             if (mergeFiles.length > 0) {
                 fileListMerge.classList.remove('hidden');
-                tool.classList.remove('hidden');
+                mergeToolbar.classList.remove('hidden');
+                mergeToolbar.classList.add('flex');
                 mergeBtn.disabled = false;
             } else {
                 fileListMerge.classList.add('hidden');
-                tool.classList.add('hidden');
+                mergeToolbar.classList.add('hidden');
                 mergeBtn.disabled = true;
             }
 
             mergeFiles.forEach((file, index) => {
-                const n = file.name.toLowerCase();
-                let label = ''; let pill = '';
-                if (n.includes('haorg')) { label = 'Heli'; pill = 'pill-h'; }
-                else if (n.includes('l')) { label = 'Takeoff'; pill = 'pill-l'; }
-                else if (n.includes('i')) { label = 'IAC'; pill = 'pill-i'; }
-                else if (n.includes('m')) { label = 'Minima'; pill = 'pill-m'; }
-
                 const li = document.createElement('li');
-                li.draggable = true;
-                li.className = 'bg-white border-2 border-slate-100 rounded-2xl p-4 flex items-center justify-between shadow-sm cursor-grab active:cursor-grabbing transition-all hover:border-blue-200';
+                li.setAttribute('draggable', true);
+                li.dataset.index = index;
+                li.className = 'file-item-hover bg-white border border-slate-200 rounded-xl p-4 flex items-center justify-between shadow-sm cursor-grab active:cursor-grabbing transition-all duration-200';
                 li.innerHTML = `
                     <div class="flex items-center gap-4 overflow-hidden pointer-events-none w-full">
-                        <div class="shrink-0 w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center font-black">
+                        <div class="shrink-0 w-8 h-8 flex items-center justify-center bg-slate-100 rounded text-slate-400">
+                            <i data-lucide="grip-vertical" class="w-5 h-5"></i>
+                        </div>
+                        <div class="shrink-0 w-10 h-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center font-bold text-sm">
                             ${index + 1}
                         </div>
-                        <div class="min-w-0">
-                            ${label ? `<span class="sort-pill ${pill}">${label}</span>` : ''}
-                            <p class="font-bold text-slate-800 truncate uppercase tracking-tight">${file.name}</p>
+                        <div class="min-w-0 flex-1">
+                            <p class="text-base font-bold text-slate-800 truncate leading-tight">${file.name}</p>
+                            <p class="text-xs font-semibold text-slate-400 mt-0.5">${formatSize(file.size)}</p>
                         </div>
                     </div>
-                    <button onclick="removeMergeFile(${index})" class="p-2 text-slate-300 hover:text-red-500">
-                        <i data-lucide="trash-2" class="w-5 h-5"></i>
-                    </button>
+                    <div class="flex items-center gap-2">
+                        <button onclick="removeMergeFile(${index})" class="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Remove file">
+                            <i data-lucide="trash-2" class="w-5 h-5"></i>
+                        </button>
+                    </div>
                 `;
-                li.addEventListener('dragstart', () => { dragSrcEl = index; li.classList.add('dragging'); });
-                li.addEventListener('dragover', (e) => e.preventDefault());
-                li.addEventListener('drop', () => {
-                    const item = mergeFiles[dragSrcEl];
-                    mergeFiles.splice(dragSrcEl, 1);
-                    mergeFiles.splice(index, 0, item);
-                    renderMergeList();
-                });
+                addDragEventsToList(li);
                 fileListMerge.appendChild(li);
             });
             lucide.createIcons();
         }
 
+        function addDragEventsToList(li) {
+            li.addEventListener('dragstart', function(e) { 
+                this.classList.add('dragging'); 
+                dragSrcEl = this; 
+                e.dataTransfer.effectAllowed = 'move'; 
+            });
+            li.addEventListener('dragover', function(e) { 
+                if (e.preventDefault) e.preventDefault(); 
+                return false; 
+            });
+            li.addEventListener('dragenter', function(e) { this.classList.add('drag-active'); });
+            li.addEventListener('dragleave', function(e) { this.classList.remove('drag-active'); });
+            li.addEventListener('drop', function(e) {
+                if (e.stopPropagation) e.stopPropagation();
+                if (dragSrcEl !== this) {
+                    const srcIdx = parseInt(dragSrcEl.dataset.index);
+                    const targetIdx = parseInt(this.dataset.index);
+                    const itemMoving = mergeFiles[srcIdx];
+                    mergeFiles.splice(srcIdx, 1);
+                    mergeFiles.splice(targetIdx, 0, itemMoving);
+                    renderMergeList();
+                }
+                return false;
+            });
+            li.addEventListener('dragend', function() { 
+                this.classList.remove('dragging');
+                fileListMerge.querySelectorAll('li').forEach(item => item.classList.remove('drag-active')); 
+            });
+        }
+
         async function mergePDFs() {
+            if (mergeFiles.length === 0) return;
             setLoading('merge', true);
             try {
-                const mergedPdf = await PDFLib.PDFDocument.create();
-                for (const f of mergeFiles) {
-                    const pdf = await PDFLib.PDFDocument.load(await f.arrayBuffer());
-                    const pages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
-                    pages.forEach(p => mergedPdf.addPage(p));
+                const { PDFDocument } = PDFLib;
+                const mergedPdf = await PDFDocument.create();
+                for (const file of mergeFiles) {
+                    const arrayBuffer = await file.arrayBuffer();
+                    const pdf = await PDFDocument.load(arrayBuffer);
+                    const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
+                    copiedPages.forEach((page) => mergedPdf.addPage(page));
                 }
-                const bytes = await mergedPdf.save();
-                saveAs(new Blob([bytes]), (customFilenameInput.value || 'mashup') + '.pdf');
-            } catch (e) { alert("Opps, something went wrong."); }
+                const pdfBytes = await mergedPdf.save();
+                const name = customFilenameInput.value.trim() || `merged-${Date.now()}`;
+                downloadFile(pdfBytes, `${name}.pdf`, 'application/pdf');
+            } catch (err) { alert("Error merging PDFs."); }
             finally { setLoading('merge', false); }
         }
 
@@ -285,17 +431,23 @@
         const fileInputSplit = document.getElementById('file-input-split');
         const splitBtn = document.getElementById('split-btn');
         const splitInfo = document.getElementById('split-file-info');
+        const summaryContent = document.getElementById('summary-content');
 
         setupDragVisuals(dropZoneSplit);
-        dropZoneSplit.addEventListener('drop', (e) => { const f = e.dataTransfer.files[0]; if(f) setSplitFile(f); });
-        fileInputSplit.addEventListener('change', (e) => { if(e.target.files[0]) setSplitFile(e.target.files[0]); });
+        dropZoneSplit.addEventListener('drop', (e) => {
+            const f = e.dataTransfer.files[0];
+            if(f && f.type === "application/pdf") setSplitFile(f);
+            else alert("Drop a single PDF.");
+        });
+        fileInputSplit.addEventListener('change', (e) => { if(e.target.files[0]) setSplitFile(e.target.files[0]); fileInputSplit.value = ''; });
 
-        function setSplitFile(f) {
-            splitFile = f;
-            document.getElementById('split-filename').textContent = f.name;
+        function setSplitFile(file) {
+            splitFile = file;
+            document.getElementById('split-filename').textContent = file.name;
             dropZoneSplit.classList.add('hidden');
             splitInfo.classList.remove('hidden');
             splitBtn.disabled = false;
+            summaryContent.classList.add('hidden');
         }
 
         function clearSplitFile() {
@@ -305,35 +457,82 @@
             splitBtn.disabled = true;
         }
 
+        async function summarizePdf() {
+            if (!splitFile) return;
+            const btn = document.getElementById('ai-summary-btn');
+            btn.disabled = true;
+            btn.innerHTML = '✨ Summarizing...';
+            summaryContent.classList.remove('hidden');
+            summaryContent.textContent = "Analyzing document content...";
+            try {
+                const { PDFDocument } = PDFLib;
+                const arrayBuffer = await splitFile.arrayBuffer();
+                const sourcePdf = await PDFDocument.load(arrayBuffer);
+                const pageCount = sourcePdf.getPageCount();
+                const prompt = `I have a PDF titled "${splitFile.name}" with ${pageCount} pages. Give me a 2-sentence summary of what this document likely contains based on the metadata and filename. Keep it helpful.`;
+                const summary = await callGemini(prompt, "You are a concise document analyst.");
+                summaryContent.textContent = summary || "Could not generate summary.";
+            } catch (e) {
+                summaryContent.textContent = "Error reading PDF for summary.";
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i data-lucide="sparkles" class="w-4 h-4 sparkle-icon"></i> ✨ AI Generate Summary';
+                lucide.createIcons();
+            }
+        }
+
         async function splitPDF() {
+            if (!splitFile) return;
             setLoading('split', true);
             try {
-                const source = await PDFLib.PDFDocument.load(await splitFile.arrayBuffer());
+                const { PDFDocument } = PDFLib;
+                const arrayBuffer = await splitFile.arrayBuffer();
+                const sourcePdf = await PDFDocument.load(arrayBuffer);
+                const pageCount = sourcePdf.getPageCount();
                 const zip = new JSZip();
-                for (let i = 0; i < source.getPageCount(); i++) {
-                    const doc = await PDFLib.PDFDocument.create();
-                    const [page] = await doc.copyPages(source, [i]);
-                    doc.addPage(page);
-                    zip.file(`page_${i + 1}.pdf`, await doc.save());
+                const folder = zip.folder("split_pages");
+                for (let i = 0; i < pageCount; i++) {
+                    const newPdf = await PDFDocument.create();
+                    const [copiedPage] = await newPdf.copyPages(sourcePdf, [i]);
+                    newPdf.addPage(copiedPage);
+                    const pdfBytes = await newPdf.save();
+                    const numStr = (i + 1).toString().padStart(3, '0');
+                    folder.file(`page_${numStr}.pdf`, pdfBytes);
                 }
                 const content = await zip.generateAsync({type:"blob"});
-                saveAs(content, `ripped_${splitFile.name}.zip`);
-            } catch (e) { alert("Rip failed. Sorry homie."); }
+                saveAs(content, `split-${splitFile.name.replace('.pdf','')}.zip`);
+            } catch (err) { alert("Error splitting PDF."); }
             finally { setLoading('split', false); }
         }
 
         function setupDragVisuals(el) {
-            el.addEventListener('dragenter', (e) => { e.preventDefault(); el.classList.add('drag-active'); });
-            el.addEventListener('dragover', (e) => e.preventDefault());
-            el.addEventListener('dragleave', () => el.classList.remove('drag-active'));
-            el.addEventListener('drop', () => el.classList.remove('drag-active'));
+            ['dragenter', 'dragover'].forEach(evt => el.addEventListener(evt, (e) => { e.preventDefault(); el.classList.add('drag-active'); }));
+            ['dragleave', 'drop'].forEach(evt => el.addEventListener(evt, (e) => { e.preventDefault(); el.classList.remove('drag-active'); }));
         }
-
-        function setLoading(t, l) {
-            const m = document.getElementById(`status-msg-${t}`);
-            const b = document.getElementById(`${t}-btn`);
-            if(l) { m.classList.remove('hidden'); b.disabled = true; }
-            else { m.classList.add('hidden'); b.disabled = false; }
+        function formatSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const i = Math.floor(Math.log(bytes) / Math.log(1024));
+            return (bytes / Math.pow(1024, i)).toFixed(2) + ' ' + ['B', 'KB', 'MB', 'GB'][i];
+        }
+        function downloadFile(data, filename, type) {
+            const blob = new Blob([data], { type });
+            const link = document.getElementById('download-link');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            link.click();
+        }
+        function setLoading(type, isLoading) {
+            const btn = type === 'merge' ? mergeBtn : splitBtn;
+            const msg = document.getElementById(`status-msg-${type}`);
+            const originalText = type === 'merge' ? 'Merge PDFs' : 'Split & Download ZIP';
+            if (isLoading) { btn.disabled = true; btn.innerHTML = 'Processing...'; msg.classList.remove('hidden'); } 
+            else {
+                btn.disabled = false;
+                const icon = type === 'merge' ? 'merge' : 'package';
+                btn.innerHTML = `<i data-lucide="${icon}" class="w-5 h-5"></i> ${originalText}`;
+                msg.classList.add('hidden');
+                lucide.createIcons();
+            }
         }
     </script>
 </body>
