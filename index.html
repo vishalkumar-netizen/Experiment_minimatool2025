@@ -114,17 +114,23 @@
 
             <!-- Toolbar with Sort and AI Features -->
             <div id="merge-toolbar" class="hidden px-6 py-3 bg-slate-50 border-y border-slate-200 flex flex-wrap gap-2 justify-between items-center">
-                <div class="flex items-center gap-2 flex-wrap">
+                <div class="flex flex-wrap items-center gap-2">
                     <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Sort:</span>
-                    <button onclick="sortFiles('cap')" class="px-3 py-2 bg-blue-600 border border-blue-700 rounded-md text-sm hover:bg-blue-700 text-white flex items-center gap-1.5 shadow-sm font-bold transition-all">
-                        <i data-lucide="check-square" class="w-4 h-4"></i> Short - CAP A1 & Final PDF
-                    </button>
-                    <button onclick="sortFiles('num')" class="px-3 py-2 bg-white border border-slate-200 rounded-md text-sm hover:bg-slate-50 text-slate-700 flex items-center gap-1.5 shadow-sm font-bold transition-all">
+                    <button onclick="sortFiles('num')" class="px-3 py-2 bg-white border border-slate-200 rounded-md text-sm hover:bg-slate-50 text-slate-700 flex items-center gap-1.5 shadow-sm font-bold transition-all" title="Numerical Sort">
                         <i data-lucide="list-ordered" class="w-4 h-4"></i> 1 2 3
                     </button>
-                    <button onclick="sortFiles('asc')" class="px-3 py-2 bg-white border border-slate-200 rounded-md text-sm hover:bg-slate-50 text-slate-700 flex items-center gap-1.5 shadow-sm transition-all">
+                    <button onclick="sortFiles('asc')" class="px-3 py-2 bg-white border border-slate-200 rounded-md text-sm hover:bg-slate-50 text-slate-700 flex items-center gap-1.5 shadow-sm transition-all" title="A to Z">
                         <i data-lucide="arrow-down-a-z" class="w-4 h-4"></i> A-Z
                     </button>
+                    <button onclick="sortFiles('desc')" class="px-3 py-2 bg-white border border-slate-200 rounded-md text-sm hover:bg-slate-50 text-slate-700 flex items-center gap-1.5 shadow-sm transition-all" title="Z to A">
+                        <i data-lucide="arrow-up-a-z" class="w-4 h-4"></i> Z-A
+                    </button>
+                    
+                    <!-- New Minima Sequence Button -->
+                    <button onclick="sortFiles('minima')" class="px-3 py-2 bg-orange-50 border border-orange-200 rounded-md text-sm hover:bg-orange-100 text-orange-700 flex items-center gap-1.5 shadow-sm transition-all font-semibold" title="Apply Minima Sequence Rule">
+                        <i data-lucide="plane" class="w-4 h-4"></i> Minima Seq
+                    </button>
+
                     <button id="ai-rename-btn" onclick="suggestMergedName()" class="px-3 py-2 bg-blue-50 border border-blue-200 rounded-md text-sm hover:bg-blue-100 text-blue-700 flex items-center gap-1.5 ml-2 shadow-sm transition-all">
                         <i data-lucide="sparkles" class="w-4 h-4 sparkle-icon"></i> ✨ AI Rename
                     </button>
@@ -287,26 +293,80 @@
         function clearMergeFiles() { mergeFiles = []; renderMergeList(); customFilenameInput.value = ''; }
         function removeMergeFile(index) { mergeFiles.splice(index, 1); renderMergeList(); }
         
-        function sortFiles(type) {
-            if (type === 'cap') {
-                const getPriority = (name) => {
-                    const n = name.toLowerCase();
-                    if (n.includes('laip') || n.includes('laorg')) return 1; // Takeoff
-                    if (n.includes('iaip') || n.includes('iaia') || n.includes('invr') || n.includes('isrr') || n.includes('iaid')) return 2; // IAC
-                    if (n.includes('maip') || n.includes('maia')) return 3; // Minima
-                    if (n.includes('haorg')) return 4; // Heli
-                    return 5; // Everything else
-                };
+        // --- MINIMA SEQUENCE LOGIC START ---
+        
+        const minimaRules = {
+            // Version precedence lists
+            versions: {
+                l: ['aip0', 'aipt', 'aorg', 'aorgt'], // Takeoff
+                i: ['aip00', 'aip0t', 'aidu0', 'aidut', 'aia00', 'aia0t', 'aipk0', 'aipkt', 'nvr00', 'nvr0t', 'srr00', 'srr0t'], // IAC
+                m: ['maorg0', 'maorgt', 'maip00', 'maip0t', 'maia00', 'maia0t', 'maipk0', 'maipkt'] // Minima
+            },
+            // Type Priority: Takeoff(l)=1, IAC(i)=2, Minima(m)=3
+            typePriority: ['l', 'i', 'm']
+        };
 
-                const collator = new Intl.Collator(undefined, {numeric: true, sensitivity: 'base'});
-                
+        function getMinimaRank(filename) {
+            const name = filename.toLowerCase().replace('.pdf', '').trim();
+            
+            // 1. Heli Rule (Highest/Last Priority in Sequence)
+            if (name.includes('haorg')) {
+                return { category: 4, number: 0, versionIndex: 0 };
+            }
+
+            // 2. Parse Suffix: {Number}{Type}{Version}
+            // Looks for the pattern at the VERY END of the filename string.
+            // (\d+) -> Number
+            // ([lim]) -> Type (l, i, m)
+            // ([a-z0-9]+) -> Version string
+            // $ -> End of string
+            const match = name.match(/(\d+)([lim])([a-z0-9]+)$/);
+
+            if (!match) {
+                // If it doesn't match the rule, put it at the very end (Rank 5)
+                return { category: 5, number: 0, versionIndex: 0 };
+            }
+
+            const [_, numStr, type, version] = match;
+            const number = parseInt(numStr, 10);
+
+            // 3. Category Rank
+            // l -> 0 -> Rank 1
+            // i -> 1 -> Rank 2
+            // m -> 2 -> Rank 3
+            const typeIndex = minimaRules.typePriority.indexOf(type);
+            const category = typeIndex + 1;
+
+            // 4. Version Rank
+            const vList = minimaRules.versions[type];
+            let vIndex = vList.indexOf(version);
+            
+            // If version is not in the list, push it to end of its category
+            if (vIndex === -1) vIndex = 999; 
+
+            return { category, number, vIndex };
+        }
+        
+        // --- MINIMA SEQUENCE LOGIC END ---
+
+        function sortFiles(type) {
+            if (type === 'minima') {
                 mergeFiles.sort((a, b) => {
-                    const pA = getPriority(a.name);
-                    const pB = getPriority(b.name);
+                    const rankA = getMinimaRank(a.name);
+                    const rankB = getMinimaRank(b.name);
+
+                    // 1. Sort by Category (Takeoff < IAC < Minima < Heli < Others)
+                    if (rankA.category !== rankB.category) {
+                        return rankA.category - rankB.category;
+                    }
                     
-                    if (pA !== pB) return pA - pB;
-                    // If same category, sort numerically/alphabetically by name
-                    return collator.compare(a.name, b.name);
+                    // 2. Sort by Number
+                    if (rankA.number !== rankB.number) {
+                        return rankA.number - rankB.number;
+                    }
+
+                    // 3. Sort by Version Index
+                    return rankA.vIndex - rankB.vIndex;
                 });
             } else if (type === 'num') {
                 const collator = new Intl.Collator(undefined, {numeric: true, sensitivity: 'base'});
@@ -352,6 +412,7 @@
                 const li = document.createElement('li');
                 li.setAttribute('draggable', true);
                 li.dataset.index = index;
+                // Enhanced file item styling: taller, bolder text, better drag indication
                 li.className = 'file-item-hover bg-white border border-slate-200 rounded-xl p-4 flex items-center justify-between shadow-sm cursor-grab active:cursor-grabbing transition-all duration-200';
                 li.innerHTML = `
                     <div class="flex items-center gap-4 overflow-hidden pointer-events-none w-full">
